@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anchor — GRC spaced repetition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f0d13; --panel:#17141d; --border:#2a2532;
+    --text:#e8e3ee; --dim:#6b6475; --accent:#f472b6; --success:#5fd88f;
+    --warn:#e0b34e; --pad:20px; --gap:26px; --radius:8px;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --title:'Quicksand',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--mono);
+    font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  h1,h2,h3{font-family:var(--title); font-weight:600; letter-spacing:.2px}
+  button{font-family:var(--mono); cursor:pointer; color:var(--text)}
+  a{color:var(--accent)}
+  .dim{color:var(--dim)}
+  .accent{color:var(--accent)}
+  .success{color:var(--success)}
+
+  /* ---- top bar ---- */
+  header{
+    display:flex; align-items:center; gap:var(--gap);
+    padding:16px var(--pad); border-bottom:1px solid var(--border);
+    position:sticky; top:0; background:rgba(15,13,19,.9); backdrop-filter:blur(6px); z-index:10;
+  }
+  .brand{display:flex; align-items:center; gap:10px; font-family:var(--title); font-weight:700; font-size:20px}
+  .brand .mark{
+    width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg,var(--accent),#a855f7);
+    display:grid;place-items:center;font-size:15px;color:#fff;
+    box-shadow:0 0 18px rgba(244,114,182,.35);
+  }
+  nav{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap}
+  nav button{
+    background:transparent; border:1px solid transparent; color:var(--dim);
+    padding:8px 14px; border-radius:var(--radius); font-size:13px; font-weight:500;
+  }
+  nav button:hover{color:var(--text); background:var(--panel)}
+  nav button.active{color:var(--text); background:var(--panel); border-color:var(--border)}
+  .streak-pill{
+    display:flex;align-items:center;gap:6px;background:var(--panel);
+    border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:13px;font-weight:500;
+  }
+
+  /* ---- layout ---- */
+  main{flex:1; width:100%; max-width:1040px; margin:0 auto; padding:var(--gap) var(--pad) 60px}
+  .view{display:none; animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:var(--pad)}
+  .grid{display:grid; gap:var(--gap)}
+  .row{display:flex; gap:var(--gap); flex-wrap:wrap}
+
+  .section-title{font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--dim); margin-bottom:14px; font-family:var(--mono); font-weight:500}
+
+  /* buttons */
+  .btn{
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    padding:11px 18px; border-radius:var(--radius); font-size:13px; font-weight:500;
+    transition:border-color .15s, transform .05s;
+  }
+  .btn:hover{border-color:var(--dim)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{
+    background:linear-gradient(135deg,var(--accent),#e0559c); border-color:transparent; color:#fff; font-weight:600;
+    box-shadow:0 4px 20px rgba(244,114,182,.28);
+  }
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.big{padding:16px 30px; font-size:15px}
+  .btn.ghost{background:transparent}
+  .btn:disabled{opacity:.4; cursor:not-allowed}
+
+  /* ---- dashboard ---- */
+  .hero{
+    display:flex; align-items:center; justify-content:space-between; gap:var(--gap);
+    background:
+      radial-gradient(120% 140% at 100% 0%, rgba(244,114,182,.14), transparent 55%),
+      var(--panel);
+    border:1px solid var(--border); border-radius:var(--radius); padding:30px var(--pad);
+  }
+  .hero .big-num{font-family:var(--title); font-size:52px; font-weight:700; line-height:1; color:var(--accent)}
+  .hero-stats{display:flex; gap:36px; margin-top:6px}
+  .hero-stats .n{font-family:var(--title); font-size:24px; font-weight:600}
+  .hero-stats .l{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim)}
+
+  .deck-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px}
+  .deck-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; display:flex; gap:16px; align-items:center; transition:border-color .15s;
+  }
+  .deck-card:hover{border-color:var(--dim)}
+  .deck-card.clickable{cursor:pointer}
+  .deck-card.clickable:hover{border-color:var(--accent)}
+  .deck-card.clickable:hover .deck-go{color:var(--accent); transform:translateX(3px)}
+  .deck-go{color:var(--dim); font-size:20px; flex-shrink:0; transition:transform .15s, color .15s}
+  .deck-card .meta{flex:1; min-width:0}
+  .deck-card h3{font-size:15px; margin-bottom:3px; display:flex; align-items:center; gap:6px}
+  .deck-card .counts{font-size:12px; color:var(--dim); display:flex; gap:12px; margin-top:8px}
+  .deck-card .counts b{color:var(--text); font-weight:500}
+  .badge{font-size:9px; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:.5px; font-weight:600}
+  .badge.star{background:rgba(244,114,182,.16); color:var(--accent)}
+  .badge.adj{background:rgba(224,179,78,.14); color:var(--warn)}
+  .badge.due{background:rgba(95,216,143,.15); color:var(--success)}
+
+  /* progress ring */
+  .ring{position:relative; width:52px; height:52px; flex-shrink:0}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .val{position:absolute; inset:0; display:grid; place-items:center; font-size:11px; font-weight:600}
+
+  /* ---- study view ---- */
+  .study-wrap{max-width:640px; margin:0 auto}
+  .progress-bar{height:5px; background:var(--border); border-radius:99px; overflow:hidden; margin-bottom:20px}
+  .progress-bar i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),#a855f7); transition:width .3s}
+  .study-meta{display:flex; justify-content:space-between; font-size:12px; color:var(--dim); margin-bottom:14px}
+  .card-scene{perspective:1600px; margin-bottom:20px}
+  .flashcard{
+    position:relative; width:100%; min-height:300px; transform-style:preserve-3d;
+    transition:transform .5s cubic-bezier(.4,.2,.2,1); cursor:pointer;
+  }
+  .flashcard.flipped{transform:rotateY(180deg)}
+  .face{
+    position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:34px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;
+  }
+  .face.back{transform:rotateY(180deg); align-items:stretch; justify-content:flex-start; text-align:left}
+  .face .deck-tag{position:absolute; top:16px; left:20px; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:1px}
+  .face .hint{position:absolute; bottom:16px; font-size:12px; color:var(--warn)}
+  .front-q{font-family:var(--title); font-size:24px; font-weight:600; line-height:1.35}
+  .flip-cue{position:absolute; bottom:16px; right:20px; font-size:11px; color:var(--dim)}
+  .back h3{font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:10px}
+  .back .answer{font-size:16px; margin-bottom:18px}
+  .back .why{border-top:1px solid var(--border); padding-top:14px; font-size:13px; color:var(--dim)}
+  .back .why b{color:var(--success); font-weight:500}
+  .back .tags{position:absolute; bottom:14px; left:34px; display:flex; gap:6px; flex-wrap:wrap}
+  .tag{font-size:10px; color:var(--dim); background:var(--bg); border:1px solid var(--border); padding:2px 7px; border-radius:4px}
+
+  .rate-row{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+  .rate{
+    padding:14px 8px; border-radius:var(--radius); border:1px solid var(--border); background:var(--panel);
+    display:flex; flex-direction:column; align-items:center; gap:3px; transition:transform .05s, border-color .15s;
+  }
+  .rate:hover{border-color:var(--dim)}
+  .rate:active{transform:translateY(1px)}
+  .rate .k{font-size:10px; color:var(--dim)}
+  .rate .lbl{font-weight:600; font-size:14px}
+  .rate .nxt{font-size:10px; color:var(--dim)}
+  .rate.again .lbl{color:#f87171} .rate.hard .lbl{color:var(--warn)}
+  .rate.good .lbl{color:var(--success)} .rate.easy .lbl{color:#60a5fa}
+  .linkbtn{background:none;border:none;color:var(--accent);font-family:var(--mono);font-size:12px;padding:0;cursor:pointer}
+  .linkbtn:hover{text-decoration:underline}
+
+  /* quiz — multiple choice */
+  .quiz-q{font-family:var(--title); font-size:22px; font-weight:600; line-height:1.4; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:26px; margin-bottom:16px}
+  .quiz-opts{display:flex; flex-direction:column; gap:10px}
+  .quiz-opt{
+    display:flex; align-items:flex-start; gap:12px; text-align:left; width:100%;
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    border-radius:var(--radius); padding:14px 16px; font-size:14px; line-height:1.45; transition:border-color .15s, background .15s;
+  }
+  .quiz-opt:hover:not(:disabled){border-color:var(--accent)}
+  .quiz-opt .opt-k{flex-shrink:0; width:22px; height:22px; border-radius:5px; background:var(--bg); border:1px solid var(--border); display:grid; place-items:center; font-size:11px; color:var(--dim)}
+  .quiz-opt.correct{border-color:var(--success); background:rgba(95,216,143,.1)}
+  .quiz-opt.correct .opt-k{background:var(--success); color:#0f0d13; border-color:var(--success)}
+  .quiz-opt.wrong{border-color:#f87171; background:rgba(248,113,113,.1)}
+  .quiz-opt.wrong .opt-k{background:#f87171; color:#0f0d13; border-color:#f87171}
+  .quiz-opt.muted{opacity:.5}
+  .quiz-opt:disabled{cursor:default}
+  .quiz-feedback{margin-top:18px; padding:16px; border-radius:var(--radius); border:1px solid var(--border); font-size:13px; text-align:center}
+  .quiz-feedback.ok{border-color:var(--success)} .quiz-feedback.ok b{color:var(--success)}
+  .quiz-feedback.no{border-color:#f87171} .quiz-feedback.no b{color:#f87171}
+  .btn.full{width:100%; text-align:center; margin-top:16px}
+  .answer-panel{background:var(--panel); border:1px solid var(--success); border-radius:var(--radius); padding:20px; margin:16px 0; position:relative}
+  .answer-panel .ap-verdict{font-size:14px; margin-bottom:12px}
+  .answer-panel .answer{font-size:16px; margin-bottom:14px}
+  .answer-panel .why{border-top:1px solid var(--border); padding-top:12px; font-size:13px; color:var(--dim)}
+  .answer-panel .why b{color:var(--success); font-weight:500}
+  .answer-panel .tags{position:static; display:flex; gap:6px; flex-wrap:wrap; margin-top:12px}
+  .rate .lbl{font-weight:600; font-size:15px}
+  .quiz-review{max-width:640px; margin:0 auto; text-align:left}
+  .miss-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px}
+  .miss-card .q{font-weight:600; margin-bottom:6px}
+  .miss-card .a{color:var(--dim); font-size:13px}
+
+  .center-msg{text-align:center; padding:70px 20px}
+  .center-msg .em{font-size:44px; margin-bottom:14px}
+  .center-msg h2{margin-bottom:8px}
+
+  /* ---- decks manager ---- */
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  th{text-align:left; font-weight:500; color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; padding:10px 12px; border-bottom:1px solid var(--border)}
+  td{padding:12px; border-bottom:1px solid var(--border); vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .switch{position:relative; width:40px; height:22px; flex-shrink:0}
+  .switch input{opacity:0; width:0; height:0}
+  .slider{position:absolute; inset:0; background:var(--border); border-radius:99px; transition:.2s; cursor:pointer}
+  .slider::before{content:""; position:absolute; height:16px; width:16px; left:3px; top:3px; background:var(--dim); border-radius:50%; transition:.2s}
+  .switch input:checked + .slider{background:rgba(244,114,182,.3)}
+  .switch input:checked + .slider::before{transform:translateX(18px); background:var(--accent)}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px}
+
+  /* checkboxes for quiz */
+  .deck-check{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:13px}
+  .deck-check:hover{border-color:var(--dim)}
+  .deck-check input{accent-color:var(--accent); width:16px; height:16px}
+  .quiz-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; margin-bottom:20px}
+
+  /* modal */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:50; padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:24px; width:100%; max-width:520px; max-height:85vh; overflow:auto}
+  .modal h2{margin-bottom:16px}
+  label.field{display:block; margin-bottom:14px}
+  label.field span{display:block; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin-bottom:6px}
+  input[type=text], textarea, select{
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    border-radius:var(--radius); padding:10px 12px; font-family:var(--mono); font-size:13px;
+  }
+  textarea{resize:vertical; min-height:60px}
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:8px}
+
+  .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; font-size:13px; z-index:80; transition:transform .3s; box-shadow:0 8px 30px rgba(0,0,0,.4)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.ok{border-color:var(--success)} .toast.err{border-color:#f87171}
+
+  .celebrate{position:fixed; inset:0; pointer-events:none; z-index:70}
+
+  @media(max-width:560px){
+    .hero{flex-direction:column; align-items:flex-start}
+    .hero-stats{gap:24px}
+    nav{width:100%; order:3}
+    .rate .nxt{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="mark">⚓</span> Anchor</div>
+  <nav id="nav">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="study">Study</button>
+    <button data-view="quiz">Mixed Quiz</button>
+    <button data-view="decks">Decks</button>
+  </nav>
+  <div class="streak-pill" title="Daily streak">🔥 <span id="streakNum">0</span></div>
+</header>
+
+<main>
+  <!-- ================= DASHBOARD ================= -->
+  <section id="dashboard" class="view active">
+    <div class="hero">
+      <div>
+        <div class="section-title" style="margin-bottom:6px">Due today</div>
+        <div class="big-num" id="dueCount">0</div>
+        <div class="hero-stats">
+          <div><div class="n" id="statStreak">0</div><div class="l">Day streak</div></div>
+          <div><div class="n" id="statMastered">0</div><div class="l">Mastered</div></div>
+          <div><div class="n" id="statTotal">0</div><div class="l">Active cards</div></div>
+        </div>
+      </div>
+      <button class="btn primary big" id="startStudy">Start studying →</button>
+    </div>
+
+    <div style="margin-top:var(--gap)">
+      <div class="section-title">Your decks</div>
+      <div class="deck-grid" id="dashDecks"></div>
+    </div>
+  </section>
+
+  <!-- ================= STUDY ================= -->
+  <section id="study" class="view">
+    <div class="study-wrap" id="studyInner"></div>
+  </section>
+
+  <!-- ================= MIXED QUIZ ================= -->
+  <section id="quiz" class="view">
+    <div class="study-wrap" id="quizInner"></div>
+  </section>
+
+  <!-- ================= DECKS ================= -->
+  <section id="decks" class="view">
+    <div class="section-title">Deck manager</div>
+    <div class="toolbar">
+      <button class="btn" id="addCardBtn">+ Add card</button>
+      <button class="btn" id="exportBtn">↓ Export JSON</button>
+      <button class="btn" id="importBtn">↑ Import JSON</button>
+      <button class="btn ghost" id="resetBtn" style="margin-left:auto">Reset progress</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+    </div>
+    <div class="panel" style="padding:0; overflow:hidden">
+      <table>
+        <thead><tr><th>On</th><th>Deck</th><th>New</th><th>Learning</th><th>Mastered</th><th></th></tr></thead>
+        <tbody id="deckTable"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- add card modal -->
+<div class="overlay" id="cardModal">
+  <div class="modal">
+    <h2>Add a card</h2>
+    <label class="field"><span>Deck</span><select id="fDeck"></select></label>
+    <label class="field"><span>Front (question / term)</span><textarea id="fFront"></textarea></label>
+    <label class="field"><span>Back (answer)</span><textarea id="fBack"></textarea></label>
+    <label class="field"><span>Why it matters (one line)</span><input type="text" id="fWhy"></label>
+    <label class="field"><span>Hint (optional)</span><input type="text" id="fHint"></label>
+    <label class="field"><span>Tags (comma separated)</span><input type="text" id="fTags"></label>
+    <div class="modal-actions">
+      <button class="btn ghost" id="cancelCard">Cancel</button>
+      <button class="btn primary" id="saveCard">Save card</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<canvas class="celebrate" id="confetti"></canvas>
+
+<script>
+/* ============================================================
+   ANCHOR — GRC spaced repetition. Vanilla JS, localStorage only.
+   ============================================================ */
+
+/* ---------- seed deck content (paraphrased, no standard text) ---------- */
+const SEED_DECKS = [
+  { id:"gov", name:"Governance & GRC mindset", group:"Foundations", defaultOn:true, cards:[
+    {front:"What are the 'three lines of defense'?", back:"1st = operational management who own & manage risk; 2nd = risk & compliance functions who oversee and set policy; 3rd = internal audit who give independent assurance.", why:"It separates who takes risk from who checks it, so assurance stays objective.", tags:["governance","assurance"]},
+    {front:"What does GRC integrate that siloed teams miss?", back:"Governance (direction & accountability), Risk (uncertainty to objectives) and Compliance (obligations) as one coordinated view instead of three disconnected ones.", why:"Integration removes duplicated controls and blind spots between teams.", tags:["governance"]},
+    {front:"Preventive vs detective vs corrective controls?", back:"Preventive stops an event (access control); detective finds it after the fact (log review); corrective fixes/limits impact (backups, incident response).", why:"A healthy control set needs all three — prevention alone always fails eventually.", tags:["controls"]},
+    {front:"Order: policy, standard, procedure, guideline?", back:"Policy (intent/why) → Standard (mandatory rules/what) → Procedure (step-by-step how) → Guideline (recommended, non-mandatory).", why:"Auditors trace a control back up this chain to a governing policy.", tags:["governance","policy"]},
+    {front:"What does a control 'map to'?", back:"A business or security objective (and often a risk it treats). Controls exist to give reasonable assurance an objective is met.", why:"A control with no objective is cost without purpose.", tags:["controls"]},
+    {front:"Who is the DPO and when is one required?", back:"Data Protection Officer — independent adviser on data-protection compliance; required under GDPR for large-scale monitoring or sensitive-data processing, or public authorities.", why:"Naming a DPO is a concrete GDPR accountability obligation.", tags:["governance","gdpr"]},
+  ]},
+
+  { id:"risk", name:"Risk fundamentals", group:"Foundations", defaultOn:true, cards:[
+    {front:"Inherent vs residual risk?", back:"Inherent = risk before any controls. Residual = risk that remains after controls are applied.", why:"You accept residual risk, not inherent — knowing the gap tells you if controls are enough.", tags:["risk"]},
+    {front:"How is risk level typically calculated?", back:"Likelihood × Impact — the probability an event occurs times the severity if it does.", why:"It lets you rank very different risks on one comparable scale.", tags:["risk","assessment"]},
+    {front:"Risk appetite vs tolerance vs capacity?", back:"Appetite = how much risk you *want* to take pursuing goals; tolerance = acceptable variation around that; capacity = the max you could absorb before real harm.", why:"Appetite guides strategy; exceeding capacity threatens survival.", tags:["risk"]},
+    {front:"Name the four risk treatment options.", back:"Accept, Mitigate (reduce), Transfer (e.g. insurance/outsourcing), Avoid (stop the activity).", why:"Every risk decision is ultimately one of these four.", tags:["risk","treatment"]},
+    {front:"KRI vs KPI?", back:"KRI = Key Risk Indicator, an early-warning metric that risk is rising; KPI = Key Performance Indicator, a measure of performance/success.", why:"KRIs let you act before a risk becomes an incident.", tags:["risk","metrics"]},
+    {front:"What is a risk register?", back:"A living record of identified risks with owner, likelihood, impact, treatment and status.", why:"It's the primary evidence that risks are actually being managed, not just noticed.", tags:["risk"]},
+    {front:"Qualitative vs quantitative risk assessment?", back:"Qualitative uses ratings/scales (High/Med/Low); quantitative assigns numeric/monetary values (e.g. annualised loss).", why:"Quantitative supports cost-benefit decisions; qualitative is faster for triage.", tags:["risk","assessment"]},
+  ]},
+
+  { id:"vocab", name:"Vocabulary & acronyms", group:"Foundations", defaultOn:true, cards:[
+    {front:"RTO vs RPO?", back:"RTO = Recovery Time Objective, how fast you must restore. RPO = Recovery Point Objective, how much data loss (time) is acceptable.", why:"They drive backup frequency and DR investment.", tags:["vocab","bcdr"]},
+    {front:"SoD (Segregation of Duties)?", back:"Splitting a sensitive task across people so no one person can both act and conceal it (e.g. request vs approve payment).", why:"It's a core anti-fraud and error-prevention control.", tags:["vocab","controls"]},
+    {front:"What is a compensating control?", back:"An alternative control used when the primary/required one isn't feasible, giving comparable risk reduction.", why:"It keeps you compliant when a standard control can't be implemented.", tags:["vocab","controls"]},
+    {front:"Least privilege?", back:"Give each user/process only the access strictly needed to do its job, nothing more.", why:"It shrinks the blast radius of any compromised account.", tags:["vocab","access"]},
+    {front:"GRC vs IRM?", back:"IRM (Integrated Risk Management) is Gartner's evolution of GRC — same goals, more risk-centric and technology-enabled framing.", why:"You'll see both terms for essentially the same discipline.", tags:["vocab"]},
+    {front:"What is 'materiality'?", back:"A threshold of significance — whether an issue is large enough to affect decisions or require reporting.", why:"It focuses effort on what actually matters to stakeholders.", tags:["vocab","audit"]},
+    {front:"Attestation?", back:"A formal statement/confirmation (often by management or an auditor) that something is true or a control operated.", why:"It's the paper trail auditors rely on.", tags:["vocab","audit"]},
+  ]},
+
+  { id:"iso27k", name:"ISO 27001 & 27002", group:"Standards", defaultOn:true, star:true, cards:[
+    {front:"What is an ISMS?", back:"Information Security Management System — the framework of policies, processes and controls, driven by risk, that ISO 27001 requires an organisation to establish and continually improve.", why:"27001 certifies the *system*, not individual controls.", tags:["iso27001","isms"]},
+    {front:"27001 vs 27002 — the difference?", back:"27001 is the certifiable *requirements* standard (the ISMS). 27002 is *guidance* giving implementation detail for the controls; you can't certify against 27002.", why:"Only 27001 gives you a certificate; 27002 helps you build the controls.", tags:["iso27001","iso27002"]},
+    {front:"What is the Statement of Applicability (SoA)?", back:"A document listing every Annex A control, whether it's applied, the justification, and its implementation status.", why:"It's the central audit artefact linking your risks to chosen controls.", tags:["iso27001","soa"]},
+    {front:"Annex A control themes in the 2022 revision?", back:"Four groupings: Organizational, People, Physical, and Technological controls (93 controls total).", why:"The 2022 rework replaced the older 14-domain structure.", tags:["iso27001","annexa","2022"]},
+    {front:"What is the risk treatment plan?", back:"The plan documenting how each identified risk will be handled (which controls, owners, timelines) — output of risk assessment feeding the SoA.", why:"Shows the ISMS is risk-driven, a core 27001 requirement.", tags:["iso27001","risk"]},
+    {front:"Which management-system clauses does 27001 use?", back:"Clauses 4–10: Context, Leadership, Planning, Support, Operation, Performance evaluation, Improvement.", why:"This shared structure (Annex SL) mirrors ISO 9001, 42001, etc.", tags:["iso27001","clauses"]},
+    {front:"How does ISO 31000 relate to 27001?", back:"31000 is the generic risk-management *guidance* standard; 27001's risk process aligns with it but is specific to information security.", why:"31000 gives the risk vocabulary 27001 builds on.", tags:["iso27001","iso31000"]},
+    {front:"What does PDCA stand for and mean here?", back:"Plan-Do-Check-Act — the continual-improvement cycle underpinning the ISMS lifecycle.", why:"27001 demands ongoing improvement, not a one-off setup.", tags:["iso27001","pdca"]},
+  ]},
+
+  { id:"nist", name:"NIST", group:"Standards", defaultOn:false, cards:[
+    {front:"The six functions of NIST CSF 2.0?", back:"Govern, Identify, Protect, Detect, Respond, Recover.", why:"'Govern' is the 2.0 addition, elevating oversight/strategy to a top-level function.", tags:["nist","csf","2.0"]},
+    {front:"What did CSF 2.0 add vs 1.1?", back:"A new 'Govern' function (risk strategy, roles, policy, supply chain) wrapping the other five, plus broader scope beyond critical infrastructure.", why:"It signals governance is now central, not assumed.", tags:["nist","csf"]},
+    {front:"CSF Tiers vs Profiles?", back:"Tiers (1–4, Partial→Adaptive) describe how mature/rigorous your risk practices are. Profiles describe your Current vs Target state of the functions.", why:"Profiles turn the framework into a roadmap (gap between current and target).", tags:["nist","csf"]},
+    {front:"NIST 800-53 vs 800-171?", back:"800-53 = full control catalog for federal systems. 800-171 = a subset protecting Controlled Unclassified Information (CUI) in non-federal systems.", why:"Contractors handling CUI are typically held to 800-171.", tags:["nist","800-53","800-171"]},
+    {front:"The NIST RMF steps?", back:"Prepare, Categorize, Select, Implement, Assess, Authorize, Monitor.", why:"It's the process for authorizing a system to operate and keeping it authorized.", tags:["nist","rmf"]},
+  ]},
+
+  { id:"aigov", name:"AI Governance", group:"Standards", defaultOn:false, star:true, cards:[
+    {front:"What is ISO/IEC 42001?", back:"The AI Management System (AIMS) standard — a certifiable framework (like 27001 but for AI) to govern responsible development and use of AI.", why:"It's the go-to standard for demonstrating structured AI governance.", tags:["42001","aims"]},
+    {front:"CONTRAST — ISO 42001 vs EU AI Act: which is voluntary and which is law?", back:"ISO 42001 = a *voluntary, certifiable management-system standard* you choose to adopt. EU AI Act = *binding regulation* you must comply with if in scope, with risk tiers and penalties.", why:"Conflating a standard you adopt with a law you must obey is the classic AIGP trap.", tags:["42001-vs-aiact","aigp"]},
+    {front:"The EU AI Act risk tiers?", back:"Unacceptable (banned), High-risk (strict obligations), Limited (transparency duties), Minimal (largely unregulated).", why:"An AI system's tier determines the entire compliance burden.", tags:["euaiact","risk-tiers"]},
+    {front:"The four functions of the NIST AI RMF?", back:"Govern, Map, Measure, Manage — Govern is cross-cutting; the others cycle through context, assessment and treatment of AI risks.", why:"It's the leading voluntary framework for trustworthy-AI risk.", tags:["nist-ai-rmf","aigp"]},
+    {front:"CONTRAST — what obligation type does 42001 create vs the EU AI Act?", back:"42001 creates *organisational* obligations (run an AIMS, improve it). The EU AI Act creates *product/system* legal obligations tied to risk tier (conformity assessment, transparency, human oversight).", why:"One governs your management system; the other governs specific AI systems by law.", tags:["42001-vs-aiact","aigp"]},
+    {front:"Who is a 'provider' vs 'deployer' under the EU AI Act?", back:"Provider = develops/places the AI system on the market; Deployer = uses it under their authority. Obligations differ by role.", why:"You must know your role to know which duties apply to you.", tags:["euaiact","roles"]},
+    {front:"What is an AI impact / conformity assessment?", back:"A structured evaluation of an AI system's risks to rights, safety and outcomes before/while deploying — a conformity assessment is the EU AI Act's formal high-risk version.", why:"It's the evidence that a high-risk system was checked before release.", tags:["euaiact","assessment"]},
+  ]},
+
+  { id:"gdpr", name:"GDPR", group:"Standards", defaultOn:false, cards:[
+    {front:"The six lawful bases for processing under GDPR?", back:"Consent, Contract, Legal obligation, Vital interests, Public task, Legitimate interests.", why:"No processing is lawful without one of these — it's the first question a regulator asks.", tags:["gdpr","lawful-basis"]},
+    {front:"Controller vs processor?", back:"Controller decides the purposes and means of processing; processor acts only on the controller's documented instructions.", why:"Liability and obligations differ sharply between the two roles.", tags:["gdpr","roles"]},
+    {front:"GDPR breach notification deadline to the regulator?", back:"Without undue delay and where feasible within 72 hours of becoming aware, unless the breach is unlikely to risk individuals' rights.", why:"Missing the 72-hour window is itself a compliance failure.", tags:["gdpr","breach"]},
+    {front:"Name three data-subject rights.", back:"Access, Rectification, Erasure ('right to be forgotten'), Restriction, Portability, Objection (any three).", why:"Organisations must have processes to action these on request.", tags:["gdpr","rights"]},
+  ]},
+
+  { id:"pdpl", name:"Bahrain PDPL", group:"Standards", defaultOn:false, cards:[
+    {front:"What is the Bahrain PDPL?", back:"Bahrain's Personal Data Protection Law (Law No. 30 of 2018) — a GDPR-style regime governing processing of personal data in Bahrain, overseen by its supervisory authority.", why:"It's the baseline privacy obligation for operating in the Bahrain market.", tags:["bahrain-pdpl","privacy"]},
+    {front:"DISTINCTION — Bahrain PDPL vs Saudi PDPL?", back:"They are *separate national laws*. Saudi Arabia has its own PDPL enforced by SDAIA; Bahrain's is a different statute with its own authority and rules — don't treat them as one Gulf regime.", why:"Assuming one GCC privacy law exists is a costly market mistake.", tags:["bahrain-pdpl","saudi-pdpl","distinction"]},
+    {front:"Does Bahrain PDPL restrict cross-border transfers?", back:"Yes — transferring personal data outside Bahrain generally requires adequate protection or authority approval, similar in spirit to GDPR transfer rules.", why:"Cross-border rules catch cloud and outsourcing arrangements.", tags:["bahrain-pdpl","transfers"]},
+  ]},
+
+  { id:"pci", name:"PCI DSS", group:"Standards", defaultOn:false, cards:[
+    {front:"What is PCI DSS and who must follow it?", back:"Payment Card Industry Data Security Standard — a contractual security standard for any entity that stores, processes or transmits cardholder data.", why:"It's enforced by the card brands/acquirers, not a government — but non-compliance means fines or losing card processing.", tags:["pci","scope"]},
+    {front:"What is an SAQ?", back:"Self-Assessment Questionnaire — a validation tool letting eligible smaller merchants attest to PCI DSS compliance without a full external audit.", why:"Your SAQ type depends on how you handle card data.", tags:["pci","validation"]},
+    {front:"Why does PCI DSS push network segmentation?", back:"Isolating the cardholder data environment (CDE) from the rest of the network shrinks what's in scope for assessment.", why:"Less in scope = less cost and lower breach exposure.", tags:["pci","segmentation"]},
+  ]},
+
+  { id:"soc2", name:"SOC 2", group:"Standards", defaultOn:false, cards:[
+    {front:"What are the five SOC 2 Trust Services Criteria?", back:"Security, Availability, Processing Integrity, Confidentiality, Privacy. Security is always included; the rest are optional by scope.", why:"Customers pick which criteria matter for the service they rely on.", tags:["soc2","tsc"]},
+    {front:"SOC 2 Type I vs Type II?", back:"Type I tests control *design* at a point in time. Type II tests design *and operating effectiveness* over a period (e.g. 6–12 months).", why:"Type II is far stronger assurance — it proves controls actually ran.", tags:["soc2","type"]},
+  ]},
+
+  { id:"hipaa", name:"HIPAA", group:"Standards", defaultOn:false, cards:[
+    {front:"What is PHI under HIPAA?", back:"Protected Health Information — individually identifiable health data held or transmitted by a covered entity or business associate.", why:"PHI is the exact data HIPAA's rules protect.", tags:["hipaa","phi"]},
+    {front:"HIPAA Privacy Rule vs Security Rule?", back:"Privacy Rule governs use/disclosure of all PHI; Security Rule sets safeguards specifically for electronic PHI (ePHI).", why:"Security Rule is the technical/administrative controls piece.", tags:["hipaa","rules"]},
+    {front:"Covered entity vs business associate?", back:"Covered entity = provider/health plan/clearinghouse handling PHI directly; business associate = a vendor handling PHI on their behalf, bound by a BAA.", why:"Business associates carry direct HIPAA liability too.", tags:["hipaa","roles"]},
+  ]},
+
+  { id:"adjsec", name:"Adjacent security (not compliance)", group:"Adjacent", defaultOn:false, adjacent:true, cards:[
+    {front:"What is the OWASP Top 10?", back:"A regularly updated list of the most critical web-application security risks (e.g. broken access control, injection).", why:"It's an awareness list, not a compliance standard — guidance for secure design.", tags:["owasp","appsec"]},
+    {front:"How does the OWASP Top 10 for LLM Applications differ?", back:"A separate list covering LLM-specific risks — prompt injection, insecure output handling, training-data poisoning, model DoS, etc.", why:"Classic web risks don't cover how LLMs actually break.", tags:["owasp-llm","ai-security"]},
+    {front:"What is MITRE ATLAS?", back:"A knowledge base of adversarial tactics and techniques against machine-learning systems, modelled on ATT&CK.", why:"It gives a shared taxonomy for AI/ML attacks.", tags:["atlas","ai-security"]},
+    {front:"What is Zero Trust (in one line)?", back:"'Never trust, always verify' — no implicit trust from network location; every access is authenticated, authorised and continuously validated.", why:"An architecture/assessment model, not a compliance standard.", tags:["zero-trust","architecture"]},
+  ]},
+];
+
+/* ---------- state ---------- */
+const STORE_KEY = "anchor.v1";
+const DAY = 86400000;
+const todayNum = () => Math.floor(Date.now()/DAY);
+
+let DECKS = [];         // decks with cards + ids assigned
+let state = load();     // persisted state
+
+function blankState(){
+  const enabled = {};
+  SEED_DECKS.forEach(d => enabled[d.id] = !!d.defaultOn);
+  return { progress:{}, enabled, streak:{count:0,last:null}, reviews:[], custom:[], newDay:{day:null,count:0} };
+}
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.progress) return {...blankState(), ...s}; }catch(e){}
+  return blankState();
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ toast("Couldn't save (storage blocked)","err"); } }
+
+/* build DECKS = seed + custom, assign stable ids */
+function buildDecks(){
+  DECKS = SEED_DECKS.map(d => ({
+    ...d,
+    cards: d.cards.map((c,i)=>({...c, id:`${d.id}#${i}`, deckId:d.id, deckName:d.name}))
+  }));
+  // fold custom cards into their decks
+  state.custom.forEach(c=>{
+    const deck = DECKS.find(d=>d.id===c.deckId);
+    if(deck) deck.cards.push({...c, deckName:deck.name});
+  });
+}
+const allCards = () => DECKS.flatMap(d=>d.cards);
+const deckById = id => DECKS.find(d=>d.id===id);
+const isEnabled = id => !!state.enabled[id];
+
+/* ---------- SM-2 engine ---------- */
+function prog(id){
+  return state.progress[id] || {ease:2.5, interval:0, reps:0, due:todayNum(), lapses:0, state:"New", seen:false};
+}
+function cardState(p){
+  if(!p.seen) return "New";
+  if(p.interval >= 21) return "Mastered";
+  return "Learning";
+}
+function newDayState(){
+  if(!state.newDay || state.newDay.day !== todayNum()) state.newDay = {day:todayNum(), count:0};
+  return state.newDay;
+}
+function newAllowance(){ return Math.max(0, NEW_PER_DAY - newDayState().count); }
+
+function schedule(id, rating){
+  const wasNew = !(state.progress[id] && state.progress[id].seen);
+  const p = {...prog(id)};
+  switch(rating){
+    case "again":
+      p.reps = 0; p.interval = 0; p.ease = Math.max(1.3, p.ease - 0.20); p.lapses++; break;
+    case "hard":
+      p.ease = Math.max(1.3, p.ease - 0.15);
+      p.interval = p.interval < 1 ? 1 : Math.round(p.interval * 1.2); p.reps++; break;
+    case "good":
+      if(p.reps === 0) p.interval = 1;
+      else if(p.reps === 1) p.interval = 6;
+      else p.interval = Math.round(p.interval * p.ease);
+      p.reps++; break;
+    case "easy":
+      p.ease = p.ease + 0.15;
+      if(p.reps === 0) p.interval = 4;
+      else if(p.reps === 1) p.interval = 8;
+      else p.interval = Math.round(p.interval * p.ease * 1.3);
+      p.reps++; break;
+  }
+  p.ease = Math.max(1.3, p.ease);
+  p.seen = true;
+  p.due = todayNum() + p.interval;   // interval 0 => due today (relearn)
+  p.state = cardState(p);
+  state.progress[id] = p;
+  state.reviews.push({d:todayNum(), r:rating});
+  if(wasNew) newDayState().count++;
+  bumpStreak();
+  save();
+  return p;
+}
+// preview interval string for the rate buttons (no state change)
+function previewInterval(id, rating){
+  const p = {...prog(id)};
+  let iv;
+  if(rating==="again") iv = 0;
+  else if(rating==="hard") iv = p.interval < 1 ? 1 : Math.round(p.interval*1.2);
+  else if(rating==="good") iv = p.reps===0?1 : p.reps===1?6 : Math.round(p.interval*p.ease);
+  else { const e=p.ease+0.15; iv = p.reps===0?4 : p.reps===1?8 : Math.round(p.interval*e*1.3); }
+  if(iv<=0) return "now";
+  if(iv===1) return "1d";
+  if(iv<30) return iv+"d";
+  const m = Math.round(iv/30); return m<12 ? m+"mo" : Math.round(iv/365)+"y";
+}
+
+function bumpStreak(){
+  const t = todayNum();
+  const s = state.streak;
+  if(s.last === t) return;
+  s.count = (s.last === t-1) ? s.count + 1 : 1;
+  s.last = t;
+}
+// streak display can lapse if a day was missed
+function displayStreak(){
+  const s = state.streak;
+  if(s.last === null) return 0;
+  return (s.last === todayNum() || s.last === todayNum()-1) ? s.count : 0;
+}
+
+/* ---------- queue building ---------- */
+const NEW_PER_DAY = 20;
+function dueQueue(){
+  const t = todayNum();
+  const enabledCards = allCards().filter(c=>isEnabled(c.deckId));
+  const due = [], fresh = [];
+  enabledCards.forEach(c=>{
+    const p = prog(c.id);
+    if(p.seen){ if(p.due <= t) due.push(c); }
+    else fresh.push(c);
+  });
+  shuffle(due); shuffle(fresh);
+  return [...due, ...fresh.slice(0, newAllowance())];
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+/* deck stats */
+function deckStats(deck){
+  let nw=0,lr=0,ms=0;
+  deck.cards.forEach(c=>{
+    const st = cardState(prog(c.id));
+    if(st==="New") nw++; else if(st==="Mastered") ms++; else lr++;
+  });
+  return {nw,lr,ms,total:deck.cards.length};
+}
+
+/* ============================================================
+   VIEWS
+   ============================================================ */
+const views = {};
+document.querySelectorAll(".view").forEach(v=>views[v.id]=v);
+function show(name){
+  Object.values(views).forEach(v=>v.classList.remove("active"));
+  views[name].classList.add("active");
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.view===name));
+  if(name==="dashboard") renderDashboard();
+  if(name==="decks") renderDeckTable();
+  if(name==="quiz") renderQuizSetup();
+  // study is started explicitly via openStudy() so a deck scope can be passed
+}
+function openStudy(scope){ show("study"); startSession(scope); }
+document.querySelectorAll("#nav button").forEach(b=> b.onclick=()=>{
+  if(b.dataset.view==="study") openStudy(null);
+  else show(b.dataset.view);
+});
+
+/* ---------- Dashboard ---------- */
+function renderDashboard(){
+  const q = dueQueue();
+  document.getElementById("dueCount").textContent = q.length;
+  document.getElementById("streakNum").textContent = displayStreak();
+  document.getElementById("statStreak").textContent = displayStreak();
+  const all = allCards().filter(c=>isEnabled(c.deckId));
+  document.getElementById("statMastered").textContent = all.filter(c=>cardState(prog(c.id))==="Mastered").length;
+  document.getElementById("statTotal").textContent = all.length;
+
+  const startBtn = document.getElementById("startStudy");
+  startBtn.disabled = q.length===0;
+  startBtn.textContent = q.length===0 ? "All done for today ✓" : "Start studying →";
+
+  const wrap = document.getElementById("dashDecks");
+  wrap.innerHTML = "";
+  DECKS.filter(d=>isEnabled(d.id)).forEach(d=>{
+    const s = deckStats(d);
+    const pct = s.total ? Math.round(s.ms/s.total*100) : 0;
+    const dueN = d.cards.filter(c=>{const p=prog(c.id); return (p.seen && p.due<=todayNum());}).length
+               + d.cards.filter(c=>!prog(c.id).seen).length;
+    const div = document.createElement("div");
+    div.className="deck-card clickable";
+    div.title = `Study ${d.name}`;
+    div.innerHTML = `
+      <div class="ring">${ring(pct)}<div class="val">${pct}%</div></div>
+      <div class="meta">
+        <h3>${d.name} ${d.star?'<span class="badge star">cert</span>':''}${d.adjacent?'<span class="badge adj">adj</span>':''}</h3>
+        <div class="counts">
+          <span><b>${s.nw}</b> new</span><span><b>${s.lr}</b> learning</span><span><b>${s.ms}</b> mastered</span>
+        </div>
+        ${dueN?`<div style="margin-top:8px"><span class="badge due">${dueN} due</span></div>`:`<div style="margin-top:8px"><span class="dim" style="font-size:11px">nothing due — click to review</span></div>`}
+      </div>
+      <div class="deck-go">→</div>`;
+    div.onclick = ()=>openStudy(d.id);
+    wrap.appendChild(div);
+  });
+  if(!wrap.children.length) wrap.innerHTML = `<div class="dim">No decks enabled. Turn some on in <b>Decks</b>.</div>`;
+}
+function ring(pct){
+  const r=22, c=2*Math.PI*r, off=c*(1-pct/100);
+  return `<svg width="52" height="52" viewBox="0 0 52 52">
+    <circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--border)" stroke-width="5"/>
+    <circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--accent)" stroke-width="5"
+      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
+  </svg>`;
+}
+document.getElementById("startStudy").onclick=()=>openStudy(null);
+
+/* ---------- Study session (quiz + flip hybrid, Repeat / Next) ---------- */
+let session = null;
+let studyScope = null;   // deckId to focus a session, or null for all enabled decks
+
+function buildStudyQueue(scope){
+  const t = todayNum();
+  if(scope){
+    const deck = deckById(scope);
+    if(!deck) return [];
+    const due=[], fresh=[];
+    deck.cards.forEach(c=>{ const p=prog(c.id); if(p.seen){ if(p.due<=t) due.push(c); } else fresh.push(c); });
+    return [...shuffle(due), ...shuffle(fresh)];   // focused deck: study it all, no daily cap
+  }
+  return dueQueue();   // global: due + new-card allowance across enabled decks
+}
+function startSession(scope){
+  studyScope = scope || null;
+  const q = buildStudyQueue(studyScope);
+  if(!q.length){ renderSessionDone(true); return; }
+  session = { queue:q, idx:0, total:q.length, done:0, opts:null, phase:"ask", chosen:null,
+              history:[], masteredBefore:masteredSnapshot(), scope:studyScope };
+  renderCard();
+}
+function masteredSnapshot(){
+  const snap={};
+  DECKS.forEach(d=> snap[d.id] = deckStats(d).ms);
+  return snap;
+}
+function renderCard(){
+  const s = session;
+  if(s.idx >= s.queue.length){ renderSessionDone(false); return; }
+  const card = s.queue[s.idx];
+  if(s.opts == null){ s.opts = quizOptions(card); s.phase = "ask"; s.chosen = null; }
+  const revealed = s.phase !== "ask";
+  const pctDone = Math.round(s.done / s.total * 100);
+
+  const optsHtml = s.opts.map((o,i)=>{
+    let cls = "quiz-opt";
+    if(revealed){
+      if(o===card.back) cls += " correct";
+      else if(o===s.chosen) cls += " wrong";
+      else cls += " muted";
+    }
+    return `<button class="${cls}" data-i="${i}" ${revealed?"disabled":""}>
+      <span class="opt-k">${i+1}</span><span>${esc(o)}</span></button>`;
+  }).join("");
+
+  let bottom;
+  if(!revealed){
+    bottom = `
+      <button class="btn ghost full" id="revealBtn">I don't know — flip to the answer</button>
+      <div class="dim" style="text-align:center;font-size:12px;margin-top:10px">Pick an answer (1–4) · or flip (Space)</div>`;
+  } else {
+    const verdict = s.chosen==null
+      ? `<span class="dim">Answer revealed</span>`
+      : (s.chosen===card.back ? `<b class="success">✓ Correct</b>` : `<b style="color:#f87171">✗ Not quite</b>`);
+    bottom = `
+      <div class="answer-panel">
+        <div class="ap-verdict">${verdict}</div>
+        <div class="answer">${esc(card.back)}</div>
+        ${card.why?`<div class="why"><b>Why it matters:</b> ${esc(card.why)}</div>`:''}
+        <div class="tags">${(card.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+      </div>
+      <div class="rate-row" style="grid-template-columns:1fr 1fr">
+        <button class="rate again" id="repeatBtn"><span class="lbl">↻ Repeat</span><span class="nxt">see it again today</span></button>
+        <button class="rate good" id="nextBtn"><span class="lbl">Next →</span><span class="nxt">back in ${previewInterval(card.id,"good")}</span></button>
+      </div>`;
+  }
+
+  views.study.querySelector(".study-wrap").innerHTML = `
+    <div class="study-meta">
+      <span>${s.history.length?`<button class="linkbtn" id="backBtn">← Back</button>`:`<span class="dim">${card.deckName}${s.scope?" · focused":""}</span>`}</span>
+      <span>${s.done} / ${s.total}</span>
+    </div>
+    <div class="progress-bar"><i style="width:${pctDone}%"></i></div>
+    <div class="quiz-q">${esc(card.front)}${(card.hint&&!revealed)?`<div style="font-size:13px;color:var(--warn);margin-top:12px;font-family:var(--mono);font-weight:400">💡 ${esc(card.hint)}</div>`:''}</div>
+    <div class="quiz-opts">${optsHtml}</div>
+    ${bottom}`;
+
+  const bb = document.getElementById("backBtn");
+  if(bb) bb.onclick = undo;
+  if(!revealed){
+    document.querySelectorAll(".quiz-opt").forEach(b=> b.onclick=()=>studyAnswer(s.opts[+b.dataset.i]));
+    document.getElementById("revealBtn").onclick = studyReveal;
+  } else {
+    document.getElementById("repeatBtn").onclick = ()=>advance("again");
+    document.getElementById("nextBtn").onclick = ()=>advance("good");
+  }
+}
+function studyAnswer(choice){
+  if(!session || session.phase!=="ask") return;
+  session.chosen = choice;
+  session.phase = "revealed";
+  renderCard();
+}
+function studyReveal(){
+  if(!session || session.phase!=="ask") return;
+  session.chosen = null;   // flipped without answering = didn't know
+  session.phase = "revealed";
+  renderCard();
+}
+function advance(rating){   // rating: "good" (Next) or "again" (Repeat)
+  if(!session || session.phase==="ask") return;
+  const card = session.queue[session.idx];
+  session.history.push({
+    idx: session.idx,
+    cardId: card.id,
+    before: state.progress[card.id] ? JSON.parse(JSON.stringify(state.progress[card.id])) : null,
+    rating,
+    streakBefore: JSON.parse(JSON.stringify(state.streak)),
+    newCountBefore: state.newDay ? state.newDay.count : 0,
+    reviewLen: state.reviews.length
+  });
+  schedule(card.id, rating);
+  if(rating==="again"){ session.queue.push(card); }  // Repeat: relearn later this session
+  else { session.done++; }
+  session.idx++;
+  session.opts = null; session.phase = "ask"; session.chosen = null;
+  updateStreakPill();
+  checkDeckMastery(card.deckId);
+  renderCard();
+}
+function undo(){
+  if(!session || !session.history.length) return;
+  const h = session.history.pop();
+  if(h.before) state.progress[h.cardId] = h.before; else delete state.progress[h.cardId];
+  state.reviews.length = Math.max(0, h.reviewLen - 1);
+  state.streak = h.streakBefore;
+  if(state.newDay) state.newDay.count = h.newCountBefore;
+  if(h.rating === "again") session.queue.pop();   // remove the re-queued copy
+  else session.done--;
+  session.idx = h.idx;
+  session.opts = null; session.phase = "ask"; session.chosen = null;   // redo the restored card
+  save();
+  updateStreakPill();
+  renderCard();
+}
+function updateStreakPill(){
+  document.getElementById("streakNum").textContent = displayStreak();
+}
+function checkDeckMastery(deckId){
+  const now = deckStats(deckById(deckId)).ms;
+  const before = session.masteredBefore[deckId] ?? 0;
+  const total = deckById(deckId).cards.length;
+  if(now > before && now === total && total>0){ celebrate(); toast(`🎉 ${deckById(deckId).name} fully mastered!`,"ok"); }
+  session.masteredBefore[deckId] = now;
+}
+function renderSessionDone(nothingDue){
+  updateStreakPill();
+  const focused = studyScope ? (deckById(studyScope)||{}).name : null;
+  views.study.querySelector(".study-wrap").innerHTML = `
+    <div class="center-msg">
+      <div class="em">${nothingDue?"🌙":"✅"}</div>
+      <h2>${nothingDue?(focused?"Caught up on this deck":"You're done for today"):"Session complete"}</h2>
+      <p class="dim" style="margin-bottom:22px">${nothingDue
+        ? (focused?`No cards from ${esc(focused)} are due right now.`:"No cards are due. Come back tomorrow, or enable more decks.")
+        : `You reviewed ${session?session.done:0} card${session&&session.done!==1?'s':''}. Streak: ${displayStreak()} 🔥`}</p>
+      <button class="btn primary" onclick="show('dashboard')">Back to dashboard</button>
+    </div>`;
+}
+
+/* ---------- Mixed Quiz (no scheduling) ---------- */
+let quiz = null;
+function renderQuizSetup(){
+  const enabledDecks = DECKS.filter(d=>d.cards.length);
+  views.quiz.querySelector(".study-wrap").innerHTML = `
+    <div class="section-title">Mixed quiz — cross-deck self test</div>
+    <p class="dim" style="margin-bottom:18px;font-size:13px">Pick decks to mix. This is a no-consequences test — <b>it does not change your spaced-repetition schedule.</b></p>
+    <div class="quiz-grid" id="quizDecks">${
+      enabledDecks.map(d=>`<label class="deck-check">
+        <input type="checkbox" value="${d.id}" ${isEnabled(d.id)?"checked":""}>
+        <span>${d.name} <span class="dim">(${d.cards.length})</span></span>
+      </label>`).join("")
+    }</div>
+    <div class="toolbar">
+      <label class="field" style="margin:0"><span>How many cards</span>
+        <select id="quizCount"><option>10</option><option>20</option><option>30</option><option value="0">All</option></select>
+      </label>
+    </div>
+    <button class="btn primary big" id="startQuiz">Start quiz →</button>`;
+  document.getElementById("startQuiz").onclick = startQuiz;
+}
+function startQuiz(){
+  const ids = [...document.querySelectorAll("#quizDecks input:checked")].map(i=>i.value);
+  if(!ids.length){ toast("Pick at least one deck","err"); return; }
+  let pool = allCards().filter(c=>ids.includes(c.deckId));
+  shuffle(pool);
+  const n = parseInt(document.getElementById("quizCount").value,10);
+  if(n>0) pool = pool.slice(0,n);
+  quiz = { queue:pool, idx:0, correct:0, missed:[], opts:null, answered:false, chosen:null };
+  renderQuizCard();
+}
+// build 4 options: the correct answer + 3 distractors (prefer same deck)
+function quizOptions(card){
+  const correct = card.back;
+  const pool = allCards().filter(c => c.id!==card.id && c.back && c.back!==correct);
+  const same = shuffle(pool.filter(c => c.deckId===card.deckId));
+  const rest = shuffle(pool);
+  const picks = [], seen = new Set([correct]);
+  for(const c of [...same, ...rest]){
+    if(picks.length>=3) break;
+    if(!seen.has(c.back)){ picks.push(c.back); seen.add(c.back); }
+  }
+  return shuffle([correct, ...picks]);
+}
+function renderQuizCard(){
+  const s = quiz;
+  if(s.idx >= s.queue.length){ renderQuizDone(); return; }
+  const card = s.queue[s.idx];
+  if(s.opts == null){ s.opts = quizOptions(card); s.answered = false; s.chosen = null; }
+  const optsHtml = s.opts.map((o,i)=>{
+    let cls = "quiz-opt";
+    if(s.answered){
+      if(o===card.back) cls += " correct";
+      else if(o===s.chosen) cls += " wrong";
+      else cls += " muted";
+    }
+    return `<button class="${cls}" data-i="${i}" ${s.answered?"disabled":""}>
+      <span class="opt-k">${i+1}</span><span>${esc(o)}</span></button>`;
+  }).join("");
+  const correct = s.chosen===card.back;
+  const feedback = s.answered ? `
+    <div class="quiz-feedback ${correct?'ok':'no'}">
+      <b>${correct?'✓ Correct':'✗ Not quite'}</b>${card.why?` — ${esc(card.why)}`:''}
+      <div style="margin-top:14px"><button class="btn primary" id="qNext">${s.idx+1>=s.queue.length?'See results':'Next →'}</button></div>
+    </div>` : `<div class="dim" style="text-align:center;font-size:12px;margin-top:14px">Pick an answer — keys 1–4</div>`;
+  views.quiz.querySelector(".study-wrap").innerHTML = `
+    <div class="study-meta"><span>Mixed quiz · ${card.deckName}</span><span>${s.idx+1} / ${s.queue.length} · score ${s.correct}</span></div>
+    <div class="progress-bar"><i style="width:${Math.round(s.idx/s.queue.length*100)}%"></i></div>
+    <div class="quiz-q">${esc(card.front)}</div>
+    <div class="quiz-opts">${optsHtml}</div>
+    ${feedback}`;
+  if(!s.answered){
+    document.querySelectorAll(".quiz-opt").forEach(b=> b.onclick=()=>quizChoose(s.opts[+b.dataset.i], card));
+  } else {
+    document.getElementById("qNext").onclick = quizNext;
+  }
+}
+function quizChoose(choice, card){
+  if(!quiz || quiz.answered) return;
+  quiz.answered = true; quiz.chosen = choice;
+  if(choice===card.back) quiz.correct++; else quiz.missed.push(card);
+  renderQuizCard();
+}
+function quizNext(){
+  quiz.idx++; quiz.opts = null; quiz.answered = false; quiz.chosen = null;
+  renderQuizCard();
+}
+function renderQuizDone(){
+  const pct = quiz.queue.length? Math.round(quiz.correct/quiz.queue.length*100):0;
+  const review = quiz.missed.length ? `
+    <div class="quiz-review">
+      <div class="section-title" style="margin-top:6px">Review — you missed ${quiz.missed.length}</div>
+      ${quiz.missed.map(c=>`<div class="miss-card"><div class="q">${esc(c.front)}</div><div class="a">${esc(c.back)}</div></div>`).join("")}
+    </div>` : `<p class="dim" style="margin-top:8px">Clean sweep — nothing missed. 🎯</p>`;
+  views.quiz.querySelector(".study-wrap").innerHTML = `
+    <div class="center-msg" style="padding-bottom:20px">
+      <div class="em">${pct>=80?"🏆":pct>=50?"👍":"📚"}</div>
+      <h2>${quiz.correct} / ${quiz.queue.length} correct</h2>
+      <p class="dim" style="margin-bottom:22px">${pct}% — ${pct>=80?"exam-ready.":pct>=50?"solid, keep drilling.":"worth another pass."}</p>
+      <button class="btn primary" onclick="renderQuizSetup()">New quiz</button>
+    </div>
+    ${review}`;
+}
+
+/* ---------- Deck manager ---------- */
+function renderDeckTable(){
+  const tb = document.getElementById("deckTable");
+  tb.innerHTML="";
+  DECKS.forEach(d=>{
+    const s = deckStats(d);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><label class="switch"><input type="checkbox" ${isEnabled(d.id)?"checked":""} data-deck="${d.id}"><span class="slider"></span></label></td>
+      <td><b>${d.name}</b> ${d.star?'<span class="badge star">cert</span>':''}${d.adjacent?'<span class="badge adj">not compliance</span>':''}<div class="dim" style="font-size:11px">${d.group} · ${s.total} cards</div></td>
+      <td>${s.nw}</td><td>${s.lr}</td><td>${s.ms}</td>
+      <td class="dim" style="font-size:11px">${d.group}</td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll("input[data-deck]").forEach(cb=> cb.onchange=()=>{
+    state.enabled[cb.dataset.deck]=cb.checked; save();
+  });
+}
+
+/* add card modal */
+const modal = document.getElementById("cardModal");
+document.getElementById("addCardBtn").onclick=()=>{
+  const sel = document.getElementById("fDeck");
+  sel.innerHTML = DECKS.map(d=>`<option value="${d.id}">${d.name}</option>`).join("");
+  ["fFront","fBack","fWhy","fHint","fTags"].forEach(id=>document.getElementById(id).value="");
+  modal.classList.add("show");
+};
+document.getElementById("cancelCard").onclick=()=>modal.classList.remove("show");
+modal.onclick=e=>{ if(e.target===modal) modal.classList.remove("show"); };
+document.getElementById("saveCard").onclick=()=>{
+  const front=document.getElementById("fFront").value.trim();
+  const back=document.getElementById("fBack").value.trim();
+  if(!front||!back){ toast("Front and back are required","err"); return; }
+  const card = {
+    id:"custom#"+Date.now(), deckId:document.getElementById("fDeck").value,
+    front, back, why:document.getElementById("fWhy").value.trim(),
+    hint:document.getElementById("fHint").value.trim(),
+    tags:document.getElementById("fTags").value.split(",").map(t=>t.trim()).filter(Boolean)
+  };
+  state.custom.push(card); save(); buildDecks();
+  modal.classList.remove("show"); renderDeckTable();
+  toast("Card added ✓","ok");
+};
+
+/* export / import / reset */
+document.getElementById("exportBtn").onclick=()=>{
+  const blob = new Blob([JSON.stringify({version:1, exported:new Date().toISOString(), state},null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="anchor-backup.json"; a.click();
+  URL.revokeObjectURL(url); toast("Exported ✓","ok");
+};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const data=JSON.parse(r.result);
+    const incoming = data.state || data;
+    if(!incoming.progress) throw new Error("bad file");
+    state = {...blankState(), ...incoming};
+    save(); buildDecks(); renderDeckTable(); renderDashboard();
+    toast("Imported ✓","ok");
+  }catch(err){ toast("Invalid backup file","err"); } };
+  r.readAsText(f); e.target.value="";
+};
+document.getElementById("resetBtn").onclick=()=>{
+  if(!confirm("Reset all progress and streak? Custom cards are kept.")) return;
+  const custom = state.custom, enabled = state.enabled;
+  state = blankState(); state.custom=custom; state.enabled=enabled;
+  save(); buildDecks(); renderDeckTable(); renderDashboard();
+  toast("Progress reset","ok");
+};
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown", e=>{
+  if(modal.classList.contains("show")) return;
+  const inStudy = views.study.classList.contains("active");
+  const inQuiz  = views.quiz.classList.contains("active");
+  if(inStudy && session){
+    if(session.phase==="ask"){
+      if(["1","2","3","4"].includes(e.key)){ const i=+e.key-1; if(session.opts && i<session.opts.length) studyAnswer(session.opts[i]); }
+      else if(e.code==="Space" || e.key==="Enter"){ e.preventDefault(); studyReveal(); }
+      else if(e.key==="Escape"){ show("dashboard"); }
+    } else {
+      if(e.key==="1" || e.key.toLowerCase()==="r"){ advance("again"); }        // Repeat
+      else if(e.key==="2" || e.code==="Space" || e.key==="Enter" || e.key.toLowerCase()==="n"){ e.preventDefault(); advance("good"); }  // Next
+      else if(e.key==="Escape"){ show("dashboard"); }
+    }
+  }
+  if(inQuiz && quiz && quiz.queue){
+    if(!quiz.answered && ["1","2","3","4"].includes(e.key)){
+      const i = +e.key-1;
+      if(quiz.opts && i < quiz.opts.length) quizChoose(quiz.opts[i], quiz.queue[quiz.idx]);
+    }
+    else if(quiz.answered && (e.key==="Enter" || e.code==="Space")){ e.preventDefault(); quizNext(); }
+    else if(e.key==="Escape"){ show("dashboard"); }
+  }
+});
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+let toastT;
+function toast(msg,kind){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.className="toast show "+(kind||"");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2600);
+}
+/* tiny confetti */
+function celebrate(){
+  const cv=document.getElementById("confetti"); const ctx=cv.getContext("2d");
+  cv.width=innerWidth; cv.height=innerHeight;
+  const cols=["#f472b6","#5fd88f","#a855f7","#e0b34e","#60a5fa"];
+  const bits=Array.from({length:120},()=>({x:Math.random()*cv.width,y:-20,vy:2+Math.random()*4,vx:-2+Math.random()*4,r:3+Math.random()*4,c:cols[~~(Math.random()*cols.length)],a:1}));
+  let f=0;
+  (function loop(){
+    ctx.clearRect(0,0,cv.width,cv.height); f++;
+    bits.forEach(b=>{ b.x+=b.vx; b.y+=b.vy; b.vy+=0.05; b.a-=0.008;
+      ctx.globalAlpha=Math.max(0,b.a); ctx.fillStyle=b.c; ctx.fillRect(b.x,b.y,b.r,b.r); });
+    if(f<160) requestAnimationFrame(loop); else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+/* ---------- boot ---------- */
+buildDecks();
+renderDashboard();
+document.getElementById("streakNum").textContent = displayStreak();
+</script>
+</body>
+</html>
