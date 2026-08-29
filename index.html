@@ -195,6 +195,29 @@
   .miss-card .q{font-weight:600; margin-bottom:6px}
   .miss-card .a{color:var(--dim); font-size:13px}
 
+  /* hero actions */
+  .hero-actions{display:flex; flex-direction:column; gap:10px; flex-shrink:0}
+
+  /* stats */
+  .stat-tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px}
+  .stat-tile{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px}
+  .stat-tile .st-n{font-family:var(--title); font-size:30px; font-weight:700; line-height:1}
+  .stat-tile .st-l{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin-top:6px}
+  .bar-chart{display:flex; align-items:flex-end; gap:6px; height:120px}
+  .bar-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:5px}
+  .bar{width:100%; max-width:26px; background:var(--border); border-radius:4px 4px 0 0; transition:height .3s; min-height:3px}
+  .bar-lbl{font-size:10px; color:var(--dim); height:12px}
+  .state-bar{display:flex; height:26px; border-radius:6px; overflow:hidden; gap:2px}
+  .state-bar .seg{transition:flex .3s}
+  .seg.new{background:var(--dim)} .seg.learning{background:var(--warn)} .seg.mastered{background:var(--success)}
+  .state-legend{display:flex; gap:20px; margin-top:12px; font-size:12px; color:var(--dim); flex-wrap:wrap}
+  .state-legend .dot{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:middle}
+  .dot.new{background:var(--dim)} .dot.learning{background:var(--warn)} .dot.mastered{background:var(--success)}
+  .recap-cta{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap}
+  .info-box p{font-size:13px; color:var(--dim); margin-bottom:12px; line-height:1.6}
+  .info-box p:last-child{margin-bottom:0}
+  .info-box b{color:var(--text); font-weight:500}
+
   .center-msg{text-align:center; padding:70px 20px}
   .center-msg .em{font-size:44px; margin-bottom:14px}
   .center-msg h2{margin-bottom:8px}
@@ -249,11 +272,12 @@
 <body>
 
 <header>
-  <div class="brand"><span class="mark">⚓</span> Anchor</div>
+  <div class="brand">Anchor</div>
   <nav id="nav">
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="study">Study</button>
     <button data-view="quiz">Mixed Quiz</button>
+    <button data-view="stats">Stats</button>
     <button data-view="decks">Decks</button>
   </nav>
   <div class="streak-pill" title="Daily streak">🔥 <span id="streakNum">0</span></div>
@@ -272,13 +296,21 @@
           <div><div class="n" id="statTotal">0</div><div class="l">Active cards</div></div>
         </div>
       </div>
-      <button class="btn primary big" id="startStudy">Start studying →</button>
+      <div class="hero-actions">
+        <button class="btn primary big" id="startStudy">Start studying →</button>
+        <button class="btn big" id="recapBtn">↻ Recap studied cards</button>
+      </div>
     </div>
 
     <div style="margin-top:var(--gap)">
       <div class="section-title">Your decks</div>
       <div class="deck-grid" id="dashDecks"></div>
     </div>
+  </section>
+
+  <!-- ================= STATS ================= -->
+  <section id="stats" class="view">
+    <div id="statsInner"></div>
   </section>
 
   <!-- ================= STUDY ================= -->
@@ -731,6 +763,7 @@ function schedule(id, rating){
   }
   p.ease = Math.max(1.3, p.ease);
   p.seen = true;
+  p.ts = Date.now();                 // last-reviewed timestamp (for Recap ordering)
   p.due = todayNum() + p.interval;   // interval 0 => due today (relearn)
   p.state = cardState(p);
   state.progress[id] = p;
@@ -806,6 +839,7 @@ function show(name){
   if(name==="dashboard") renderDashboard();
   if(name==="decks") renderDeckTable();
   if(name==="quiz") renderQuizSetup();
+  if(name==="stats") renderStats();
   // study is started explicitly via openStudy() so a deck scope can be passed
 }
 function openStudy(scope){ show("study"); startSession(scope); }
@@ -862,6 +896,107 @@ function ring(pct){
   </svg>`;
 }
 document.getElementById("startStudy").onclick=()=>openStudy(null);
+document.getElementById("recapBtn").onclick=()=>startRecap();
+
+/* ---------- Stats & history ---------- */
+function studyDays(){ return [...new Set(state.reviews.map(r=>r.d))].sort((a,b)=>a-b); }
+function longestStreak(){
+  const days = studyDays();
+  if(!days.length) return 0;
+  let best=1, run=1;
+  for(let i=1;i<days.length;i++){
+    run = (days[i]===days[i-1]+1) ? run+1 : 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+function renderStats(){
+  const reviews = state.reviews;
+  const total = reviews.length;
+  const today = reviews.filter(r=>r.d===todayNum()).length;
+  const days = studyDays();
+  const remembered = reviews.filter(r=>r.r==="good"||r.r==="easy").length;
+  const retention = total ? Math.round(remembered/total*100) : 0;
+  const all = allCards();
+  const byState = {New:0, Learning:0, Mastered:0};
+  all.forEach(c=>byState[cardState(prog(c.id))]++);
+  const seenCount = all.filter(c=>prog(c.id).seen).length;
+
+  // last 14 days bar chart
+  const N=14, counts=[];
+  for(let i=N-1;i>=0;i--){ const d=todayNum()-i; counts.push({d, n:reviews.filter(r=>r.d===d).length}); }
+  const maxN = Math.max(1, ...counts.map(c=>c.n));
+  const bars = counts.map(c=>{
+    const h = Math.round(c.n/maxN*100);
+    const isToday = c.d===todayNum();
+    return `<div class="bar-col" title="${c.n} review${c.n!==1?'s':''}">
+      <div class="bar" style="height:${Math.max(3,h)}%;${isToday?'background:var(--accent)':''}"></div>
+      <div class="bar-lbl">${c.n||''}</div></div>`;
+  }).join("");
+
+  const tile = (n,l,extra="") => `<div class="stat-tile"><div class="st-n" ${extra}>${n}</div><div class="st-l">${l}</div></div>`;
+
+  document.getElementById("statsInner").innerHTML = `
+    <div class="section-title">Your progress</div>
+    <div class="stat-tiles">
+      ${tile(displayStreak(),"Current streak 🔥")}
+      ${tile(longestStreak(),"Longest streak")}
+      ${tile(days.length,"Days studied")}
+      ${tile(total,"Total reviews")}
+      ${tile(today,"Reviews today")}
+      ${tile(retention+"%","Retention",'style="color:var(--success)"')}
+    </div>
+
+    <div class="panel" style="margin-top:var(--gap)">
+      <div class="section-title" style="margin-bottom:16px">Reviews — last 14 days</div>
+      <div class="bar-chart">${bars}</div>
+    </div>
+
+    <div class="panel" style="margin-top:var(--gap)">
+      <div class="section-title" style="margin-bottom:16px">Cards by state (all decks)</div>
+      <div class="state-bar">
+        <div class="seg new" style="flex:${byState.New||0.001}" title="New: ${byState.New}"></div>
+        <div class="seg learning" style="flex:${byState.Learning||0.001}" title="Learning: ${byState.Learning}"></div>
+        <div class="seg mastered" style="flex:${byState.Mastered||0.001}" title="Mastered: ${byState.Mastered}"></div>
+      </div>
+      <div class="state-legend">
+        <span><i class="dot new"></i>${byState.New} New</span>
+        <span><i class="dot learning"></i>${byState.Learning} Learning</span>
+        <span><i class="dot mastered"></i>${byState.Mastered} Mastered</span>
+      </div>
+    </div>
+
+    <div class="panel recap-cta" style="margin-top:var(--gap)">
+      <div>
+        <h3 style="margin-bottom:4px">Recap studied cards</h3>
+        <div class="dim" style="font-size:12px">Review the ${seenCount} card${seenCount!==1?'s':''} you've already seen (most recent first). Doesn't affect your schedule.</div>
+      </div>
+      <button class="btn primary" id="recapBtn2" ${seenCount?'':'disabled'}>↻ Start recap</button>
+    </div>
+
+    <div class="panel info-box" style="margin-top:var(--gap)">
+      <div class="section-title" style="margin-bottom:12px">How this works</div>
+      <p><b>Your data is saved locally.</b> Progress, streaks and history live in this browser (no account, no server). Reloading, closing the tab or restarting your computer keeps everything — it only resets if you clear browser data or use a different browser/device. Use <b>Export JSON</b> in Decks to back it up.</p>
+      <p><b>Streak</b> counts each distinct day you study at least one card. Miss a day and it resets to 1 on your next session.</p>
+      <p><b>Mastered</b> means a card's spaced-repetition interval has reached 21+ days — which takes several correct reviews over several days. So a card can't be "mastered" the first day you see it.</p>
+      <p><b>Retention</b> is the share of all your reviews you answered/kept as "Next" rather than "Repeat".</p>
+    </div>`;
+  const rb = document.getElementById("recapBtn2");
+  if(rb) rb.onclick = ()=>startRecap();
+}
+
+/* ---------- Recap (review previously-seen cards, no scheduling) ---------- */
+function startRecap(){
+  const seen = allCards().filter(c=>prog(c.id).seen);
+  if(!seen.length){ toast("No studied cards to recap yet — study some first","err"); return; }
+  seen.sort((a,b)=>(prog(b.id).ts||0)-(prog(a.id).ts||0));   // most recently reviewed first
+  const pool = seen.slice(0, 40);
+  quiz = { queue:pool, idx:0, correct:0, missed:[], opts:null, answered:false, chosen:null, recap:true };
+  Object.values(views).forEach(v=>v.classList.remove("active"));
+  views.quiz.classList.add("active");
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.view==="quiz"));
+  renderQuizCard();
+}
 
 /* ---------- Study session (quiz + flip hybrid, Repeat / Next) ---------- */
 let session = null;

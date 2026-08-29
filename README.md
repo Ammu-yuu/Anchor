@@ -11,6 +11,8 @@ Built as a self-contained sibling to Kyther: one `index.html`, vanilla JS, no bu
 - **Focused decks** — click any deck on the dashboard to drill just that deck.
 - **Mixed Quiz** — cross-deck, multiple-choice, auto-graded self-test. Does **not** affect your spaced-repetition schedule, so it's safe for exam-prep cramming.
 - **Dashboard** — cards due today, streak, mastered count, and per-deck progress rings.
+- **Stats** — current & longest streak, days studied, total reviews, a 14-day reviews chart, retention %, and a cards-by-state breakdown, plus an in-app explainer of how streak/mastered/storage work.
+- **Recap** — review the cards you've already seen (most recent first), without affecting your spaced-repetition schedule.
 - **Deck manager** — enable/disable decks, add your own cards, JSON import/export, reset progress.
 - **Keyboard-first** — `1–4` to answer, `Space` to flip; after reveal, `1`/`R` = Repeat, `2`/`Space`/`N` = Next; `Esc` ends a session. Undo (`← Back`) fully reverses the last card.
 
