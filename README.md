@@ -41,6 +41,47 @@ python3 -m http.server 8177
 
 All state (progress, streaks, custom cards) lives in your browser's `localStorage`. Use **Export JSON** in the Deck manager to back it up or move it between browsers.
 
+## Install on your phone / computer (offline PWA)
+
+Anchor is an installable, offline-first PWA. Once it's hosted (see below), open the URL and:
+
+- **iPhone (Safari):** Share → **Add to Home Screen**. It opens full-screen like an app and works with no internet.
+- **Android (Chrome):** menu → **Install app** / Add to Home Screen.
+- **Desktop (Chrome/Edge):** install icon in the address bar.
+
+A service worker caches the app, so after the first load it runs fully offline — perfect for studying while travelling. Your progress saves locally on each device as you go.
+
+### Hosting it (GitHub Pages, free)
+
+The repo is a static site, so GitHub Pages serves it directly:
+
+1. Repo **Settings → Pages**.
+2. **Source: Deploy from a branch**, **Branch: `main`**, **Folder: `/ (root)`**, Save.
+3. After a minute it's live at `https://<user>.github.io/Anchor/`.
+
+## Sync setup (cross-device, free — optional)
+
+Studying works offline with no account. To sync **progress + streak across devices**, add a free Firebase backend (the merge is conflict-free: card progress takes the most recent review, study-days are unioned so the streak is always right, reviews dedupe by id):
+
+1. Create a free project at [console.firebase.google.com](https://console.firebase.google.com) (no card needed).
+2. Add a **Web app** (`</>`), copy the `firebaseConfig` object it shows you.
+3. **Build → Firestore Database → Create database**.
+4. **Build → Authentication → Sign-in method → enable Anonymous.**
+5. Set Firestore **Rules** to (this scopes access to the app's collection for signed-in clients):
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /anchor/{code} { allow read, write: if request.auth != null; }
+     }
+   }
+   ```
+6. In `index.html`, replace `const FIREBASE_CONFIG = null;` with your config object, e.g.
+   `const FIREBASE_CONFIG = { apiKey: "…", authDomain: "…", projectId: "…", … };`
+7. Redeploy. Then on each device: **Stats → Sync across devices** → **Generate** a code on one device, enter the **same code** on the other, hit **Sync now**.
+
+**Note:** this is a shared-secret model — anyone who knows your sync code (and the app URL) could read/write that code's data. Use the generated 8-character code and don't share it. It's meant for your own devices.
+
 ## Tech & design
 
 - Vanilla JS + HTML + CSS in one file. No framework, no build, no network calls (fonts degrade to system fallbacks offline).
@@ -49,10 +90,10 @@ All state (progress, streaks, custom cards) lives in your browser's `localStorag
 
 ## Roadmap
 
-- **Milestone 5** — flesh every deck out to full depth.
-- **v1.1** — Stats view (reviews over time, retention %, longest streak).
+- ~~Milestone 5 — flesh every deck out to full depth.~~ ✓ (284 cards)
+- ~~Stats view~~ ✓ · ~~Offline PWA + optional cross-device sync~~ ✓
 - **Later** — cloze cards, concept map, shareable deck codes.
 
-## Out of scope
+## Notes
 
-No accounts, no server, no external calls. Educational content only.
+Core app has no server and works fully offline. The optional Firebase sync is the one external dependency, and only runs when you've configured it and set a sync code. Educational content only, paraphrased — no copyrighted standard text.

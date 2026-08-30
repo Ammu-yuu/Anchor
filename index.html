@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Anchor — GRC spaced repetition</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f0d13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Anchor">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
@@ -34,6 +41,9 @@
     display:flex; align-items:center; gap:var(--gap);
     padding:16px var(--pad); border-bottom:1px solid var(--border);
     position:sticky; top:0; background:rgba(15,13,19,.9); backdrop-filter:blur(6px); z-index:10;
+    padding-top:calc(16px + env(safe-area-inset-top));
+    padding-left:calc(var(--pad) + env(safe-area-inset-left));
+    padding-right:calc(var(--pad) + env(safe-area-inset-right));
   }
   .brand{display:flex; align-items:center; gap:10px; font-family:var(--title); font-weight:700; font-size:20px}
   .brand .mark{
@@ -217,6 +227,9 @@
   .info-box p{font-size:13px; color:var(--dim); margin-bottom:12px; line-height:1.6}
   .info-box p:last-child{margin-bottom:0}
   .info-box b{color:var(--text); font-weight:500}
+  .info-box code{background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:12px}
+  .sync-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .sync-row input{letter-spacing:2px; font-weight:600}
 
   .center-msg{text-align:center; padding:70px 20px}
   .center-msg .em{font-size:44px; margin-bottom:14px}
@@ -708,6 +721,89 @@ function load(){
   return blankState();
 }
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ toast("Couldn't save (storage blocked)","err"); } }
+function uid(){ return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now()+"-"+Math.random().toString(36).slice(2); }
+
+/* ---------- conflict-free merge (for cross-device sync) ---------- */
+// Merge two Anchor states without losing progress. Idempotent, order-independent.
+function mergeState(a, b){
+  if(!b) return a;
+  const out = {...blankState()};
+  // progress: per card, keep the most recently reviewed version (max ts)
+  out.progress = {...(b.progress||{})};
+  for(const [id,p] of Object.entries(a.progress||{})){
+    const q = out.progress[id];
+    if(!q || (p.ts||0) >= (q.ts||0)) out.progress[id] = p;
+  }
+  // reviews: union by id (dedupe), so re-syncing never double-counts
+  const rev = new Map();
+  for(const r of [...(b.reviews||[]), ...(a.reviews||[])]){
+    const k = r.id || (r.d+"|"+r.r);
+    if(!rev.has(k)) rev.set(k, r);
+  }
+  out.reviews = [...rev.values()].sort((x,y)=>x.d-y.d);
+  // enabled decks: enabled if enabled on either device
+  out.enabled = {...(b.enabled||{})};
+  for(const [k,v] of Object.entries(a.enabled||{})) out.enabled[k] = v || out.enabled[k];
+  // custom cards: union by id
+  const cust = new Map();
+  for(const c of [...(b.custom||[]), ...(a.custom||[])]) cust.set(c.id, c);
+  out.custom = [...cust.values()];
+  // today's new-card allowance: take the larger count so limits aren't bypassed
+  const t = todayNum();
+  const an = (a.newDay&&a.newDay.day===t)?a.newDay.count:0;
+  const bn = (b.newDay&&b.newDay.day===t)?b.newDay.count:0;
+  out.newDay = {day:t, count:Math.max(an,bn)};
+  return out;
+}
+
+/* ---------- Cloud sync (Firebase, sync-code model) ---------- */
+// To enable: create a free Firebase project, enable Firestore + Anonymous Auth,
+// and paste your firebaseConfig object below (replace null). See README "Sync setup".
+const FIREBASE_CONFIG = null;
+let _fb = null, _syncing = false;
+function syncConfigured(){ return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.projectId); }
+function syncCode(){ return (localStorage.getItem("anchor.synccode")||"").toUpperCase(); }
+function setSyncCode(c){ if(c) localStorage.setItem("anchor.synccode", c.toUpperCase()); else localStorage.removeItem("anchor.synccode"); }
+function genCode(){ const s="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let c=""; for(let i=0;i<8;i++) c+=s[Math.floor(Math.random()*s.length)]; return c; }
+function setSyncStatus(t){ const el=document.getElementById("syncStatus"); if(el) el.textContent=t; }
+
+async function ensureFirebase(){
+  if(_fb) return _fb;
+  const app = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+  const fs  = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  const au  = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+  const application = app.initializeApp(FIREBASE_CONFIG);
+  const auth = au.getAuth(application);
+  await au.signInAnonymously(auth);
+  _fb = { db: fs.getFirestore(application), doc: fs.doc, getDoc: fs.getDoc, setDoc: fs.setDoc };
+  return _fb;
+}
+async function cloudSync(manual){
+  const code = syncCode();
+  if(!syncConfigured()){ if(manual) toast("Cloud sync isn't configured yet","err"); return; }
+  if(!code){ if(manual) toast("Set a sync code first","err"); return; }
+  if(!navigator.onLine){ setSyncStatus("Offline — will sync when back online"); return; }
+  if(_syncing) return;
+  _syncing = true; setSyncStatus("Syncing…");
+  try{
+    const fb = await ensureFirebase();
+    const ref = fb.doc(fb.db, "anchor", code);
+    const snap = await fb.getDoc(ref);
+    const remote = snap.exists() ? snap.data().state : null;
+    state = mergeState(state, remote);
+    save(); buildDecks();
+    await fb.setDoc(ref, { state, updated: Date.now() });
+    localStorage.setItem("anchor.lastsync", String(Date.now()));
+    setSyncStatus("Synced ✓ "+new Date().toLocaleTimeString());
+    if(views.stats && views.stats.classList.contains("active")) renderStats();
+    renderDashboard(); updateStreakPill();
+  }catch(err){
+    console.warn("sync failed", err);
+    setSyncStatus("Sync failed: "+(err && err.message ? err.message : err));
+    if(manual) toast("Sync failed — check config & Firestore rules","err");
+  }finally{ _syncing = false; }
+}
+window.addEventListener("online", ()=>{ if(syncCode()) cloudSync(false); });
 
 /* build DECKS = seed + custom, assign stable ids */
 function buildDecks(){
@@ -767,7 +863,7 @@ function schedule(id, rating){
   p.due = todayNum() + p.interval;   // interval 0 => due today (relearn)
   p.state = cardState(p);
   state.progress[id] = p;
-  state.reviews.push({d:todayNum(), r:rating});
+  state.reviews.push({id:uid(), d:todayNum(), r:rating});
   if(wasNew) newDayState().count++;
   bumpStreak();
   save();
@@ -794,11 +890,15 @@ function bumpStreak(){
   s.count = (s.last === t-1) ? s.count + 1 : 1;
   s.last = t;
 }
-// streak display can lapse if a day was missed
+// streak is DERIVED from the set of days you actually studied, so it stays
+// correct after a cross-device merge (which unions those days).
 function displayStreak(){
-  const s = state.streak;
-  if(s.last === null) return 0;
-  return (s.last === todayNum() || s.last === todayNum()-1) ? s.count : 0;
+  const days = new Set(state.reviews.map(r=>r.d));
+  const t = todayNum();
+  if(!days.has(t) && !days.has(t-1)) return 0;   // lapses if you miss today and yesterday
+  let day = days.has(t) ? t : t-1, n = 0;
+  while(days.has(day)){ n++; day--; }
+  return n;
 }
 
 /* ---------- queue building ---------- */
@@ -980,9 +1080,33 @@ function renderStats(){
       <p><b>Streak</b> counts each distinct day you study at least one card. Miss a day and it resets to 1 on your next session.</p>
       <p><b>Mastered</b> means a card's spaced-repetition interval has reached 21+ days — which takes several correct reviews over several days. So a card can't be "mastered" the first day you see it.</p>
       <p><b>Retention</b> is the share of all your reviews you answered/kept as "Next" rather than "Repeat".</p>
+    </div>
+
+    <div class="panel" style="margin-top:var(--gap)">
+      <div class="section-title" style="margin-bottom:12px">Sync across devices</div>
+      ${syncConfigured() ? `
+        <p class="dim" style="font-size:13px;margin-bottom:14px">Enter the <b>same code</b> on each device to share progress. Studying always works offline — it syncs whenever you're online.</p>
+        <div class="sync-row">
+          <input type="text" id="syncCodeInput" placeholder="SYNC CODE" value="${esc(syncCode())}" maxlength="12" autocapitalize="characters" style="text-transform:uppercase;max-width:170px">
+          <button class="btn" id="genCodeBtn">Generate</button>
+          <button class="btn" id="saveCodeBtn">Save code</button>
+          <button class="btn primary" id="syncNowBtn">Sync now</button>
+        </div>
+        <div class="dim" id="syncStatus" style="font-size:12px;margin-top:12px">${syncCode()?("Code set: "+syncCode()):"No code yet — generate one, then enter it on your other device."}</div>
+      ` : `
+        <p class="dim" style="font-size:13px">Cloud sync isn't switched on yet. It needs a free Firebase project (a one-time ~10-minute setup) — the steps are in the project's <b>README → "Sync setup"</b>. Once your config is pasted into <code>index.html</code>, this panel goes live. Until then, everything works offline and stays on this device.</p>
+      `}
     </div>`;
   const rb = document.getElementById("recapBtn2");
   if(rb) rb.onclick = ()=>startRecap();
+  if(syncConfigured()){
+    document.getElementById("genCodeBtn").onclick = ()=>{ document.getElementById("syncCodeInput").value = genCode(); };
+    document.getElementById("saveCodeBtn").onclick = ()=>{
+      const v = document.getElementById("syncCodeInput").value.trim().toUpperCase();
+      setSyncCode(v); toast(v?"Sync code saved":"Code cleared","ok"); if(v) cloudSync(true);
+    };
+    document.getElementById("syncNowBtn").onclick = ()=>cloudSync(true);
+  }
 }
 
 /* ---------- Recap (review previously-seen cards, no scheduling) ---------- */
@@ -1389,6 +1513,13 @@ function celebrate(){
 buildDecks();
 renderDashboard();
 document.getElementById("streakNum").textContent = displayStreak();
+
+// register the service worker so the app works offline / installs to home screen
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW failed", e)));
+}
+// pull the latest from the cloud on startup if sync is set up and we're online
+if(syncConfigured() && syncCode() && navigator.onLine){ cloudSync(false); }
 </script>
 </body>
 </html>
