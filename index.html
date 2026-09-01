@@ -801,9 +801,9 @@ async function cloudSync(manual){
     save(); buildDecks();
     await fb.setDoc(ref, { state, updated: Date.now() });
     localStorage.setItem("anchor.lastsync", String(Date.now()));
-    setSyncStatus("Synced ✓ "+new Date().toLocaleTimeString());
     if(views.stats && views.stats.classList.contains("active")) renderStats();
     renderDashboard(); updateStreakPill();
+    setSyncStatus("Synced ✓ "+new Date().toLocaleTimeString());   // set last so the re-render can't clobber it
   }catch(err){
     console.warn("sync failed", err);
     setSyncStatus("Sync failed: "+(err && err.message ? err.message : err));
