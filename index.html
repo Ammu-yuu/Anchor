@@ -759,7 +759,14 @@ function mergeState(a, b){
 /* ---------- Cloud sync (Firebase, sync-code model) ---------- */
 // To enable: create a free Firebase project, enable Firestore + Anonymous Auth,
 // and paste your firebaseConfig object below (replace null). See README "Sync setup".
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyALlDYPiRB08BNUGwSeQcXSA3E3mP9KeTk",
+  authDomain: "anchor-58e5c.firebaseapp.com",
+  projectId: "anchor-58e5c",
+  storageBucket: "anchor-58e5c.firebasestorage.app",
+  messagingSenderId: "378328877496",
+  appId: "1:378328877496:web:8161ae548619bd33e0e74d"
+};
 let _fb = null, _syncing = false;
 function syncConfigured(){ return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.projectId); }
 function syncCode(){ return (localStorage.getItem("anchor.synccode")||"").toUpperCase(); }
