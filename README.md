@@ -16,7 +16,7 @@ Built as a self-contained sibling to Kyther: one `index.html`, vanilla JS, no bu
 - **Deck manager** — enable/disable decks, add your own cards, JSON import/export, reset progress.
 - **Keyboard-first** — `1–4` to answer, `Space` to flip; after reveal, `1`/`R` = Repeat, `2`/`Space`/`N` = Next; `Esc` ends a session. Undo (`← Back`) fully reverses the last card.
 
-## Decks (280+ cards seeded)
+## Decks (320 cards seeded, all on by default)
 
 **Foundations** (on by default): Governance & GRC mindset · Risk fundamentals · Vocabulary & acronyms
 
