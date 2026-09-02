@@ -21,16 +21,15 @@ The author is actively studying GRC and sitting real certifications (ISO 27001 L
 
 ## Design language
 - **Fonts:** JetBrains Mono (data/UI) + Quicksand (titles)
-- **Palette ("jellyfish" — deep navy with lavender/periwinkle glows):**
-  - bg `#0a0e3a`
-  - panel `#151c58`
-  - border `#2d3778`
-  - text `#eae7fb`
-  - dim `#8f97d0`
-  - accent — Verbena `#b37ad4` (gradients pair with Periwinkle `#7997e6`)
-  - success — teal `#4fd6b0`
-  - warn — amber `#e0b34e` (learning state)
-  - source swatches: Phlox `#caa9f3`, Verbena `#b37ad4`, Periwinkle `#7997e6`, Atlantis `#206abc`, Phthalo Blue `#0e155e`
+- **Palette (light periwinkle):**
+  - bg `#d7def7` (soft periwinkle ground)
+  - panel `#eef1fc` (near-white lavender, raised)
+  - border `#bcc6ea`
+  - text `#232a54` (deep indigo)
+  - dim `#5c659c`
+  - accent — Verbena `#9b57c4` (gradients pair with periwinkle `#6a86dd`)
+  - success — teal `#1c9e77` · warn — amber `#b07d16` · wrong — red `#dc4a4a`
+  - source swatches: Phlox `#caa9f3`, Verbena `#b37ad4`, Periwinkle `#7997e6`, Atlantis `#206abc`
 - **Spacing scale:** `--pad: 20px`, `--gap: 26px`, `--radius: 8px`
 
 ---
