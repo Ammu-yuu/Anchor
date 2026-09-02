@@ -275,11 +275,24 @@
 
   .celebrate{position:fixed; inset:0; pointer-events:none; z-index:70}
 
-  @media(max-width:560px){
-    .hero{flex-direction:column; align-items:flex-start}
-    .hero-stats{gap:24px}
-    nav{width:100%; order:3}
+  @media(max-width:640px){
+    header{flex-wrap:wrap; gap:12px}
+    .brand{order:1; font-size:19px}
+    .streak-pill{order:2; margin-left:auto}
+    nav{order:3; width:100%; margin-left:0; justify-content:center; gap:5px}
+    nav button{padding:7px 11px; font-size:12px}
+    .hero{flex-direction:column; align-items:stretch; padding:24px 20px}
+    .hero-stats{gap:22px}
+    .hero-actions{width:100%}
+    .deck-grid{grid-template-columns:1fr}
+    .recap-cta{flex-direction:column; align-items:stretch}
+    .recap-cta .btn{width:100%}
     .rate .nxt{display:none}
+    #decks .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+  }
+  @media(max-width:380px){
+    nav button{padding:6px 9px; font-size:11px}
+    .quiz-q, .front-q{font-size:20px}
   }
 </style>
 </head>
@@ -358,7 +371,7 @@
       <button class="btn ghost" id="resetBtn" style="margin-left:auto">Reset progress</button>
       <input type="file" id="importFile" accept="application/json" hidden>
     </div>
-    <div class="panel" style="padding:0; overflow:hidden">
+    <div class="panel table-wrap" style="padding:0">
       <table>
         <thead><tr><th>On</th><th>Deck</th><th>New</th><th>Learning</th><th>Mastered</th><th></th></tr></thead>
         <tbody id="deckTable"></tbody>
