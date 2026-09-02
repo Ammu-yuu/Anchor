@@ -19,16 +19,18 @@ The author is actively studying GRC and sitting real certifications (ISO 27001 L
 
 ---
 
-## Design language (from Kyther)
+## Design language
 - **Fonts:** JetBrains Mono (data/UI) + Quicksand (titles)
-- **Palette:**
-  - bg `#0f0d13`
-  - panel `#17141d`
-  - border `#2a2532`
-  - text `#e8e3ee`
-  - dim `#6b6475`
-  - accent (pink) `#f472b6`
-  - success `#5fd88f`
+- **Palette ("jellyfish" — deep navy with lavender/periwinkle glows):**
+  - bg `#0a0e3a`
+  - panel `#151c58`
+  - border `#2d3778`
+  - text `#eae7fb`
+  - dim `#8f97d0`
+  - accent — Verbena `#b37ad4` (gradients pair with Periwinkle `#7997e6`)
+  - success — teal `#4fd6b0`
+  - warn — amber `#e0b34e` (learning state)
+  - source swatches: Phlox `#caa9f3`, Verbena `#b37ad4`, Periwinkle `#7997e6`, Atlantis `#206abc`, Phthalo Blue `#0e155e`
 - **Spacing scale:** `--pad: 20px`, `--gap: 26px`, `--radius: 8px`
 
 ---
