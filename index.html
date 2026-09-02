@@ -6,6 +6,7 @@
 <title>Anchor — GRC spaced repetition</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0e3a">
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -285,7 +286,18 @@
 <body>
 
 <header>
-  <div class="brand">Anchor</div>
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 120 120" width="30" height="30" aria-hidden="true">
+      <polygon points="60,15 105,60 60,105 15,60" fill="#8695b3"/>
+      <polygon points="67.8,15.7 104.3,67.8 52.2,104.3 15.7,52.2" fill="none" stroke="#4f8fd6" stroke-width="3"/>
+      <path d="M44 94 L76 94 L66 66 L54 66 Z" fill="#0a0e3a"/>
+      <path d="M60 40 L67 58 L53 58 Z" fill="#0a0e3a"/>
+      <path d="M56 24 L64 24 L102 94 L18 94 Z M44 94 L76 94 L66 66 L54 66 Z M60 40 L67 58 L53 58 Z"
+            fill="#cdd9ec" stroke="#070b2c" stroke-width="5" stroke-linejoin="round" fill-rule="evenodd"/>
+      <path d="M60 44 C63 48 63 52 60 55 C57 52 57 48 60 44 Z" fill="#cdd9ec"/>
+    </svg>
+    Anchor
+  </div>
   <nav id="nav">
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="study">Study</button>

@@ -1,5 +1,5 @@
 /* Anchor service worker — offline-first app shell cache */
-const CACHE = "anchor-v2";
+const CACHE = "anchor-v3";
 const ASSETS = [
   "./",
   "./index.html",
