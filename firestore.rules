@@ -22,7 +22,7 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && request.resource.data.keys().hasOnly(['state', 'updated'])
         && request.resource.data.state is map
-        && request.resource.data.updated is int
+        && request.resource.data.updated is number
         && code.size() >= 6 && code.size() <= 40;
     }
 
