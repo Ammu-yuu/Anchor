@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Anchor sync rules — hardened.
+// Model: each sync doc is keyed by a secret sync code (the document id).
+// Anonymous auth is required, but the code is the shared secret between a
+// user's own devices. These rules stop an anonymous user from enumerating
+// or wiping other people's data.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /anchor/{code} {
+
+      // Single-document reads only — you must already know the exact code.
+      allow get: if request.auth != null;
+
+      // No listing the collection, and no deleting docs.
+      // (This closes the "any anon user can dump every sync doc" hole.)
+      allow list, delete: if false;
+
+      // Writes must be signed in and match the exact shape the app writes:
+      //   { state: <map>, updated: <number> }
+      // Reject anything else (junk fields, wrong types, or absurd code ids).
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['state', 'updated'])
+        && request.resource.data.state is map
+        && request.resource.data.updated is int
+        && code.size() >= 6 && code.size() <= 40;
+    }
+
+    // Everything else is denied by default.
+  }
+}

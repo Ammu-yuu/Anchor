@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://www.gstatic.com; worker-src 'self'; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Anchor — GRC spaced repetition</title>
 <link rel="manifest" href="manifest.json">
@@ -777,6 +778,17 @@ function blankState(){
   SEED_DECKS.forEach(d => enabled[d.id] = true);   // learn-all: every deck on by default
   return { progress:{}, enabled, streak:{count:0,last:null}, reviews:[], custom:[], newDay:{day:null,count:0} };
 }
+// Only accept known fields with the expected types from imported/untrusted data.
+function sanitizeState(inc){
+  const b = blankState();
+  if(inc && typeof inc.progress === "object" && inc.progress) b.progress = inc.progress;
+  if(inc && typeof inc.enabled === "object" && inc.enabled) b.enabled = inc.enabled;
+  if(inc && Array.isArray(inc.reviews)) b.reviews = inc.reviews.filter(r=>r && typeof r.d === "number");
+  if(inc && Array.isArray(inc.custom)) b.custom = inc.custom.filter(c=>c && typeof c.front === "string" && typeof c.back === "string");
+  if(inc && typeof inc.streak === "object" && inc.streak) b.streak = inc.streak;
+  if(inc && typeof inc.newDay === "object" && inc.newDay) b.newDay = inc.newDay;
+  return b;
+}
 function load(){
   try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.progress) return {...blankState(), ...s}; }catch(e){}
   return blankState();
@@ -832,7 +844,7 @@ let _fb = null, _syncing = false;
 function syncConfigured(){ return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.projectId); }
 function syncCode(){ return (localStorage.getItem("anchor.synccode")||"").toUpperCase(); }
 function setSyncCode(c){ if(c) localStorage.setItem("anchor.synccode", c.toUpperCase()); else localStorage.removeItem("anchor.synccode"); }
-function genCode(){ const s="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let c=""; for(let i=0;i<8;i++) c+=s[Math.floor(Math.random()*s.length)]; return c; }
+function genCode(){ const s="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let c=""; for(let i=0;i<12;i++) c+=s[Math.floor(Math.random()*s.length)]; return c; }
 function setSyncStatus(t){ const el=document.getElementById("syncStatus"); if(el) el.textContent=t; }
 
 async function ensureFirebase(){
@@ -1261,7 +1273,7 @@ function renderCard(){
 
   views.study.querySelector(".study-wrap").innerHTML = `
     <div class="study-meta">
-      <span>${s.history.length?`<button class="linkbtn" id="backBtn">← Back</button>`:`<span class="dim">${card.deckName}${s.scope?" · focused":""}</span>`}</span>
+      <span>${s.history.length?`<button class="linkbtn" id="backBtn">← Back</button>`:`<span class="dim">${esc(card.deckName)}${s.scope?" · focused":""}</span>`}</span>
       <span>${s.done} / ${s.total}</span>
     </div>
     <div class="progress-bar"><i style="width:${pctDone}%"></i></div>
@@ -1417,7 +1429,7 @@ function renderQuizCard(){
       <div style="margin-top:14px"><button class="btn primary" id="qNext">${s.idx+1>=s.queue.length?'See results':'Next →'}</button></div>
     </div>` : `<div class="dim" style="text-align:center;font-size:12px;margin-top:14px">Pick an answer — keys 1–4</div>`;
   views.quiz.querySelector(".study-wrap").innerHTML = `
-    <div class="study-meta"><span>Mixed quiz · ${card.deckName}</span><span>${s.idx+1} / ${s.queue.length} · score ${s.correct}</span></div>
+    <div class="study-meta"><span>Mixed quiz · ${esc(card.deckName)}</span><span>${s.idx+1} / ${s.queue.length} · score ${s.correct}</span></div>
     <div class="progress-bar"><i style="width:${Math.round(s.idx/s.queue.length*100)}%"></i></div>
     <div class="quiz-q">${esc(card.front)}</div>
     <div class="quiz-opts">${optsHtml}</div>
@@ -1512,9 +1524,9 @@ document.getElementById("importFile").onchange=e=>{
   const r=new FileReader();
   r.onload=()=>{ try{
     const data=JSON.parse(r.result);
-    const incoming = data.state || data;
-    if(!incoming.progress) throw new Error("bad file");
-    state = {...blankState(), ...incoming};
+    const incoming = (data && data.state) ? data.state : data;
+    if(!incoming || typeof incoming.progress !== "object" || !incoming.progress) throw new Error("bad file");
+    state = sanitizeState(incoming);   // only copy known fields with the right types
     save(); buildDecks(); renderDeckTable(); renderDashboard();
     toast("Imported ✓","ok");
   }catch(err){ toast("Invalid backup file","err"); } };
@@ -1555,7 +1567,7 @@ document.addEventListener("keydown", e=>{
 });
 
 /* ---------- helpers ---------- */
-function esc(s){ return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 let toastT;
 function toast(msg,kind){
   const t=document.getElementById("toast");
