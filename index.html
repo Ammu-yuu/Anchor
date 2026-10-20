@@ -249,6 +249,12 @@
   .switch input:checked + .slider{background:rgba(179,122,212,.3)}
   .switch input:checked + .slider::before{transform:translateX(18px); background:var(--accent)}
   .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px}
+  .plan-panel{margin-bottom:4px}
+  .plan-row{display:flex; gap:32px; flex-wrap:wrap}
+  .plan-row label{display:flex; flex-direction:column; gap:6px; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--dim)}
+  .plan-row input{width:110px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:10px 12px; font-family:var(--mono); font-size:16px; font-weight:600; text-transform:none; letter-spacing:0}
+  .plan-row label .dim{font-size:11px; text-transform:none; letter-spacing:0}
+  .plan-note{font-size:12px; margin-top:16px; line-height:1.6}
 
   /* checkboxes for quiz */
   .deck-check{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:13px}
@@ -364,7 +370,22 @@
 
   <!-- ================= DECKS ================= -->
   <section id="decks" class="view">
-    <div class="section-title">Deck manager</div>
+    <div class="section-title">Daily plan</div>
+    <div class="panel plan-panel">
+      <div class="plan-row">
+        <label>Daily goal
+          <input type="number" id="setDailyMax" min="5" max="200" step="5">
+          <span class="dim">cards/day shown as "due"</span>
+        </label>
+        <label>New cards / day
+          <input type="number" id="setNewPerDay" min="0" max="50" step="1">
+          <span class="dim">how fast new material is introduced</span>
+        </label>
+      </div>
+      <p class="dim plan-note">Reviews come first (capped at your goal); new cards fill what's left, drawn from your priority decks first — ISO 27001, AI Governance &amp; foundations before the rest. Overflow rolls to tomorrow.</p>
+    </div>
+
+    <div class="section-title" style="margin-top:var(--gap)">Deck manager</div>
     <div class="toolbar">
       <button class="btn" id="addCardBtn">+ Add card</button>
       <button class="btn" id="exportBtn">↓ Export JSON</button>
@@ -755,8 +776,18 @@ let state = load();     // persisted state
 function blankState(){
   const enabled = {};
   SEED_DECKS.forEach(d => enabled[d.id] = true);   // learn-all: every deck on by default
-  return { progress:{}, enabled, streak:{count:0,last:null}, reviews:[], custom:[], newDay:{day:null,count:0} };
+  return { progress:{}, enabled, streak:{count:0,last:null}, reviews:[], custom:[], newDay:{day:null,count:0}, settings:{dailyMax:20, newPerDay:8} };
 }
+// daily-plan settings, migration-safe
+function settings(){
+  if(!state.settings) state.settings = {dailyMax:20, newPerDay:8};
+  if(typeof state.settings.dailyMax !== "number") state.settings.dailyMax = 20;
+  if(typeof state.settings.newPerDay !== "number") state.settings.newPerDay = 8;
+  return state.settings;
+}
+// deck priority — new cards are introduced in this order (lower = sooner).
+// Tier 1 = active certs + foundations · Tier 2 = next · Tier 3 = last.
+const DECK_PRIORITY = { gov:1, risk:1, vocab:1, iso27k:1, aigov:1, gdpr:2, nist:2, pdpl:2, pci:3, soc2:3, adjsec:3 };
 // Only accept known fields with the expected types from imported/untrusted data.
 function sanitizeState(inc){
   const b = blankState();
@@ -766,6 +797,7 @@ function sanitizeState(inc){
   if(inc && Array.isArray(inc.custom)) b.custom = inc.custom.filter(c=>c && typeof c.front === "string" && typeof c.back === "string");
   if(inc && typeof inc.streak === "object" && inc.streak) b.streak = inc.streak;
   if(inc && typeof inc.newDay === "object" && inc.newDay) b.newDay = inc.newDay;
+  if(inc && typeof inc.settings === "object" && inc.settings) b.settings = inc.settings;
   return b;
 }
 function load(){
@@ -805,6 +837,8 @@ function mergeState(a, b){
   const an = (a.newDay&&a.newDay.day===t)?a.newDay.count:0;
   const bn = (b.newDay&&b.newDay.day===t)?b.newDay.count:0;
   out.newDay = {day:t, count:Math.max(an,bn)};
+  // daily-plan settings: keep whichever device has them (prefer local)
+  out.settings = a.settings || b.settings || blankState().settings;
   return out;
 }
 
@@ -893,7 +927,7 @@ function newDayState(){
   if(!state.newDay || state.newDay.day !== todayNum()) state.newDay = {day:todayNum(), count:0};
   return state.newDay;
 }
-function newAllowance(){ return Math.max(0, NEW_PER_DAY - newDayState().count); }
+function newAllowance(){ return Math.max(0, settings().newPerDay - newDayState().count); }
 
 function schedule(id, rating){
   const wasNew = !(state.progress[id] && state.progress[id].seen);
@@ -961,18 +995,30 @@ function displayStreak(){
 }
 
 /* ---------- queue building ---------- */
-const NEW_PER_DAY = 20;
+// order new cards by deck priority (tier 1 first), shuffled within each tier
+function orderByPriority(cards){
+  const groups = {};
+  cards.forEach(c=>{ const p = DECK_PRIORITY[c.deckId] || 2; (groups[p] = groups[p] || []).push(c); });
+  return Object.keys(groups).sort((a,b)=>a-b).flatMap(k=>shuffle(groups[k]));
+}
 function dueQueue(){
   const t = todayNum();
+  const dailyMax = settings().dailyMax;
   const enabledCards = allCards().filter(c=>isEnabled(c.deckId));
-  const due = [], fresh = [];
+  let due = [], fresh = [];
   enabledCards.forEach(c=>{
     const p = prog(c.id);
     if(p.seen){ if(p.due <= t) due.push(c); }
     else fresh.push(c);
   });
-  shuffle(due); shuffle(fresh);
-  return [...due, ...fresh.slice(0, newAllowance())];
+  shuffle(due);
+  fresh = orderByPriority(fresh);
+  // reviews come first (capped at the daily goal); new cards fill whatever room is left,
+  // limited by the per-day new-card budget. Overflow rolls to tomorrow.
+  const reviews = due.slice(0, dailyMax);
+  const newRoom = Math.max(0, dailyMax - reviews.length);
+  const newCount = Math.min(newAllowance(), fresh.length, newRoom);
+  return [...reviews, ...fresh.slice(0, newCount)];
 }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
@@ -1457,12 +1503,17 @@ function renderDeckTable(){
       <td><label class="switch"><input type="checkbox" ${isEnabled(d.id)?"checked":""} data-deck="${d.id}"><span class="slider"></span></label></td>
       <td><b>${d.name}</b> ${d.star?'<span class="badge star">cert</span>':''}${d.adjacent?'<span class="badge adj">not compliance</span>':''}<div class="dim" style="font-size:11px">${d.group} · ${s.total} cards</div></td>
       <td>${s.nw}</td><td>${s.lr}</td><td>${s.ms}</td>
-      <td class="dim" style="font-size:11px">${d.group}</td>`;
+      <td class="dim" style="font-size:11px">Tier ${DECK_PRIORITY[d.id]||2}</td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll("input[data-deck]").forEach(cb=> cb.onchange=()=>{
-    state.enabled[cb.dataset.deck]=cb.checked; save();
+    state.enabled[cb.dataset.deck]=cb.checked; save(); renderDashboard();
   });
+  // daily-plan inputs
+  const dm=document.getElementById("setDailyMax"), np=document.getElementById("setNewPerDay");
+  dm.value=settings().dailyMax; np.value=settings().newPerDay;
+  dm.onchange=()=>{ const v=Math.max(5,Math.min(200,parseInt(dm.value)||20)); settings().dailyMax=v; dm.value=v; save(); renderDashboard(); toast("Daily goal: "+v+" cards/day","ok"); };
+  np.onchange=()=>{ const v=Math.max(0,Math.min(50,parseInt(np.value)||0)); settings().newPerDay=v; np.value=v; save(); renderDashboard(); toast("New cards/day: "+v,"ok"); };
 }
 
 /* add card modal */
