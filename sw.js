@@ -1,9 +1,10 @@
 /* Anchor service worker — offline-first app shell cache */
-const CACHE = "anchor-v8";
+const CACHE = "anchor-v9";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./logo-mark.png",
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png"
