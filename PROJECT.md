@@ -73,7 +73,6 @@ All content is **paraphrased concept knowledge — never copyrighted standard te
 8. **Bahrain PDPL** — real cards; includes a card flagging the **Saudi PDPL / SDAIA** distinction. (Bahrain-market differentiator.)
 9. **PCI DSS** — cardholder data, SAQ, segmentation.
 10. **SOC 2** — the 5 Trust Services Criteria, Type I vs Type II.
-11. **HIPAA** — PHI, Privacy vs Security Rule, covered entity vs business associate.
 
 ### Adjacent security — optional, default OFF, labeled "not a compliance standard"
 12. **Adjacent security** — OWASP Top 10, OWASP Top 10 for LLM Applications, MITRE ATLAS, Zero Trust. Kept distinct from GRC standards on purpose.

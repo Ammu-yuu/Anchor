@@ -16,11 +16,11 @@ Built as a self-contained sibling to Kyther: one `index.html`, vanilla JS, no bu
 - **Deck manager** — enable/disable decks, add your own cards, JSON import/export, reset progress.
 - **Keyboard-first** — `1–4` to answer, `Space` to flip; after reveal, `1`/`R` = Repeat, `2`/`Space`/`N` = Next; `Esc` ends a session. Undo (`← Back`) fully reverses the last card.
 
-## Decks (320 cards seeded, all on by default)
+## Decks (302 cards seeded, all on by default)
 
 **Foundations** (on by default): Governance & GRC mindset · Risk fundamentals · Vocabulary & acronyms
 
-**Standards & frameworks**: ISO 27001 & 27002 · NIST (CSF 2.0 / RMF) · AI Governance (ISO 42001, EU AI Act, NIST AI RMF — with `42001-vs-aiact` contrast cards) · GDPR · Bahrain PDPL (+ Saudi PDPL / SDAIA distinction) · PCI DSS · SOC 2 · HIPAA
+**Standards & frameworks**: ISO 27001 & 27002 · NIST (CSF 2.0 / RMF) · AI Governance (ISO 42001, EU AI Act, NIST AI RMF — with `42001-vs-aiact` contrast cards) · GDPR · Bahrain PDPL (+ Saudi PDPL / SDAIA distinction) · PCI DSS · SOC 2
 
 **Adjacent security** (optional, off by default, clearly *not* a compliance standard): OWASP Top 10 · OWASP Top 10 for LLMs · MITRE ATLAS · Zero Trust
 
