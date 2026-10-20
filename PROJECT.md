@@ -21,11 +21,12 @@ The author is actively studying GRC and sitting real certifications (ISO 27001 L
 
 ## Design language
 - **Fonts:** JetBrains Mono (data/UI) + Quicksand (titles)
-- **Palette (paper / navy / gold):**
-  - bg `#ece8dd` (paper) · panel `#f7f4ed` · border `#d9d2c3`
-  - text — navy `#182b49` · dim `#6e7792`
-  - accent — gold `#b49555` (primary buttons use navy text) · success/correct — green `#4e8e6a` · learning — periwinkle `#7b84b8` · wrong — rose `#a85d60`
-  - source swatches: Gold `#b49555`, Structured Dark `#182b49`, Accent rose `#b37c7f`, Base Calm periwinkle `#9aa1cb`, Paper `#ede9de`
+- **Palette (blush / rose / gold):**
+  - bg `#fce7ef` (blush) · panel `#ffffff` · border `#f2cede`
+  - text — plum `#4a2340` · dim `#9a6f88`
+  - accent — rose `#ec4d93` (buttons use white text; gradient to `#d63a81`) · gold `#b88a2e` (rings, cert badges, logo)
+  - correct/mastered — mint `#2fa672` · learning — lavender `#9b63cf` · wrong — coral `#e24b6a`
+  - logo: rose-tinted anchor-over-book; app icons on deep plum `#4a2340`
 - **Spacing scale:** `--pad: 20px`, `--gap: 26px`, `--radius: 8px`
 
 ---

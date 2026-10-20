@@ -85,7 +85,7 @@ Studying works offline with no account. To sync **progress + streak across devic
 ## Tech & design
 
 - Vanilla JS + HTML + CSS in one file. No framework, no build, no network calls (fonts degrade to system fallbacks offline).
-- Design language: JetBrains Mono + Quicksand; paper/navy/gold theme (cream paper ground, navy text, antique-gold accents, with an anchor-over-a-book logo). Green = correct/mastered, rose = incorrect, periwinkle = learning.
+- Design language: JetBrains Mono + Quicksand; soft blush-pink theme (blush ground, white cards, plum text, vivid rose accent, gold rings/cert badges, rose anchor-over-book logo). Mint = correct/mastered, coral = incorrect, lavender = learning.
 - See [`PROJECT.md`](PROJECT.md) for the full spec and the SM-2 scheduling rules.
 
 ## Roadmap
